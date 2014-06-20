@@ -1,0 +1,327 @@
+//
+//  KSDataDownloader.m
+//
+//  Created by Kai Straßmann on 24.10.13.
+//
+
+#import "KSDataDownloader.h"
+#import "KSNetworkActivityIndicatorManager.h"
+
+@interface KSDataDownloader ()
+@property (nonatomic, strong) NSURLConnection *urlConnection;
+@property (nonatomic, strong) NSHTTPURLResponse *urlResponse;
+@property (nonatomic, assign) long long contentLength;
+@property (nonatomic, strong) NSMutableData *activeDownloadData;
+@property (nonatomic, assign) BOOL operationEnded;
+@property (nonatomic, copy) void (^successBlock)(KSDataDownloader *downloader, NSData *data, NSString *stringData);
+@property (nonatomic, copy) void (^fileSuccessBlock)(KSDataDownloader *downloader);
+@property (nonatomic, copy) void (^jsonSuccessBlock)(KSDataDownloader *downloader, id responseObject);
+@property (nonatomic, copy) void (^errorBlock)(KSDataDownloader *downloader, NSError *error);
+@property (nonatomic, strong) NSURLCredential *credential;
+@property (nonatomic, copy) NSURL *targetFileUrl;
+@property (nonatomic, copy) NSURL *tmpFileUrl;
+@property (nonatomic, strong) NSOutputStream *outputStream;
+@property (nonatomic, assign) long long outputStreamWrittenBytes;
+@property (nonatomic, strong) NSMutableDictionary *headers;
+@end
+
+static NSMutableDictionary *globalHeaders;
+
+@implementation KSDataDownloader
++ (void)initialize {
+    if (self == [KSDataDownloader class]) {
+        globalHeaders = [NSMutableDictionary dictionary];
+    }
+}
+
+- (id)initWithCompletionBlock:(void(^)(KSDataDownloader *downloader, NSData *data, NSString *stringData))success error:(void(^)(KSDataDownloader *downloader, NSError *error))error {
+	self = [super init];
+	if (self) {
+		self.successBlock = success;
+		self.errorBlock = error;
+		[self setDefaults];
+	}
+	return self;
+}
+
+- (id)initWithJSONCompletionBlock:(void(^)(KSDataDownloader *downloader, id responseObject))success error:(void(^)(KSDataDownloader *downloader, NSError*error))error {
+	self = [super init];
+	if (self) {
+		self.jsonSuccessBlock = success;
+		self.errorBlock = error;
+		[self setDefaults];
+		self.headers[@"Accept"] = @"application/json,text/json";
+	}
+	return self;
+}
+
+- (id)initWithTargetFileUrl:(NSURL*)targetFileUrl completion:(void(^)(KSDataDownloader *downloader))success error:(void(^)(KSDataDownloader *downloader, NSError*error))error {
+	self = [super init];
+	if (self) {
+		self.fileSuccessBlock = success;
+		self.errorBlock = error;
+		[self setDefaults];
+		self.targetFileUrl = targetFileUrl;
+	}
+	return self;
+}
+
+- (void)setDefaults {
+	self.timeoutSeconds = 45;
+	self.method = @"GET";
+	self.headers = [NSMutableDictionary dictionary];
+	
+	for (NSString *key in globalHeaders) {
+		self.headers[key] = globalHeaders[key];
+	}
+}
+
+#pragma mark - Cancel
+- (void)cancelDownload {
+	if (!self.operationEnded) {
+		self.operationEnded = YES;
+		[[KSNetworkActivityIndicatorManager sharedManager] decrease];
+	}
+	[self.urlConnection cancel];
+	self.urlConnection = nil;
+	self.activeDownloadData = nil;
+	self.urlResponse = nil;
+}
+
+#pragma mark - Request startes
+- (void)startRequest:(NSURL *)url parameters:(NSDictionary*)parameters httpBodyData:(NSData*)bodyData {
+	if (url == nil) {
+		if (self.errorBlock) self.errorBlock(self, [NSError errorWithDomain:@"url error" code:-1 userInfo:@{NSLocalizedDescriptionKey: @"url can't be nil!"}]);
+		return;
+	}
+	
+	self.operationEnded = NO;
+	if (self.targetFileUrl) { // download to file
+		// generate a tmp target file
+		NSString *guid = [[[NSUUID alloc] init] UUIDString];
+		NSString *tmpPath = NSTemporaryDirectory();
+		self.tmpFileUrl = [[NSURL fileURLWithPath:tmpPath] URLByAppendingPathComponent:guid];
+		self.outputStream = [NSOutputStream outputStreamWithURL:self.tmpFileUrl append:NO];
+		[self.outputStream open];
+		self.outputStreamWrittenBytes = 0;
+	} else { // download to memory
+		self.activeDownloadData = [NSMutableData data];
+	}
+	
+	self.urlResponse = nil;
+	[[KSNetworkActivityIndicatorManager sharedManager] increase];
+	NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url cachePolicy:NSURLRequestUseProtocolCachePolicy timeoutInterval:self.timeoutSeconds];
+	request.HTTPMethod = self.method;
+	
+	// enable/disable cookies
+	[request setHTTPShouldHandleCookies:!self.cookiesDisabled];
+		
+	for (NSString *key in self.headers) {
+		[request setValue:self.headers[key] forHTTPHeaderField:key];
+	}
+	
+	if (parameters) {
+		NSMutableString *queryString = [[NSMutableString alloc] init];
+		for (NSString *key in parameters) {
+			id unknownTypeValue = parameters[key];
+			
+			NSString *value;
+			if ([unknownTypeValue isKindOfClass:[NSString class]]) {
+				value = unknownTypeValue;
+				[queryString appendFormat:@"%@=%@&", key, [self urlEncode:value]];
+			} else if ([unknownTypeValue isKindOfClass:[UIImage class]]) {
+				NSLog(@"not implemented yet");
+			} else if ([unknownTypeValue isKindOfClass:[NSNull class]]) {
+				value = @"";
+				[queryString appendFormat:@"%@=%@&", key, [self urlEncode:value]];
+			} else if ([unknownTypeValue isKindOfClass:[NSArray class]]) { // modifications to support the Rails array syntax!
+				NSArray *valueArray = (NSArray*)unknownTypeValue;
+				NSString *modifiedKey = [key stringByAppendingString:@"[]"];
+				
+				if (valueArray.count == 0) [queryString appendFormat:@"%@=&", modifiedKey]; // send an empty array
+				
+				for (NSString *value in valueArray) {
+					[queryString appendFormat:@"%@=%@&", modifiedKey, [self urlEncode:value]];
+				}
+				
+			} else {
+				value = [unknownTypeValue description];
+				[queryString appendFormat:@"%@=%@&", key, [self urlEncode:value]];
+			}
+		}
+		
+		if ([queryString hasSuffix:@"&"]) {
+			[queryString deleteCharactersInRange:NSMakeRange(queryString.length - 1, 1)];
+		}
+		
+		if ([self.method isEqualToString:@"GET"] || [self.method isEqualToString:@"DELETE"] ) {
+			request.URL = [NSURL URLWithString:[NSString stringWithFormat:@"%@?%@", url.absoluteString, queryString]];
+		} else if ([self.method isEqualToString:@"POST"] || [self.method isEqualToString:@"PUT"]) {
+			NSData *queryData = [NSData dataWithBytes: [queryString UTF8String] length:queryString.length];
+			[request setValue:@"application/x-KSw-form-urlencoded" forHTTPHeaderField:@"Content-Type"];
+			[request setHTTPBody: queryData];
+		}
+	} else if (bodyData) {
+		[request setHTTPBody: bodyData];
+	}
+		
+	self.urlConnection = [[NSURLConnection alloc] initWithRequest:request delegate:self startImmediately:NO];
+	[self.urlConnection scheduleInRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
+	[self.urlConnection start];
+}
+
+- (void)startRequest:(NSURL *)url parameters:(NSDictionary*)parameters {
+	[self startRequest:url parameters:parameters httpBodyData:nil];
+}
+
+- (void)startRequest:(NSURL *)url {
+	[self startRequest:url parameters:nil httpBodyData:nil];
+}
+
+
+#pragma mark - Credentials
+- (void)setUsername:(NSString*)username andPassword:(NSString*)password {
+	NSURLCredential *credential = [NSURLCredential credentialWithUser:username password:password persistence:NSURLCredentialPersistenceNone];
+	self.credential = credential;
+}
+
+#pragma mark - Headers
+- (void)setHeader:(NSString*)value forKey:(NSString*)key {
+	if (value != nil) {
+		self.headers[key] = value;
+	} else {
+		[self removeHeaderForKey:key];
+	}
+}
+
+- (void)removeHeaderForKey:(NSString*)key {
+	if (key != nil) [self.headers removeObjectForKey:key];
+}
+
++ (void)setGlobalHeader:(NSString*)value forKey:(NSString*)key {
+	if (value != nil) {
+		globalHeaders[key] = value;
+	} else {
+		[self removeGlobalHeaderForKey:key];
+	}
+}
+
++ (void)removeGlobalHeaderForKey:(NSString*)key {
+	if (key != nil) [globalHeaders removeObjectForKey:key];
+}
+
+#pragma mark - Download support (NSURLConnectionDelegate)
+- (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSHTTPURLResponse *)response {
+	self.contentLength = [response.allHeaderFields[@"Content-Length"] longLongValue];
+	if (self.progressBlock != nil && self.contentLength > 0) {
+		self.progressBlock(self, 0.15f);
+	}
+	self.urlResponse = response;
+}
+
+- (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)data {
+    if (connection == self.urlConnection) {
+		if (self.outputStream) { // file download
+			self.outputStreamWrittenBytes += [self.outputStream write:data.bytes maxLength:data.length];
+		} else { // download to memory
+			[self.activeDownloadData appendData:data];
+		}
+		if (self.progressBlock != nil && self.contentLength > 0) {
+			float progress;
+			
+			if (self.outputStream)
+				progress = 0.15f + 0.85 * ((double)self.outputStreamWrittenBytes / (double)self.contentLength);
+			else
+				progress = 0.15f + 0.85 * ((double)self.activeDownloadData.length / (double)self.contentLength);
+			
+			self.progressBlock(self, progress);
+		}
+	}
+}
+
+- (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error {
+	if (!self.operationEnded) {
+		self.operationEnded = YES;
+		[[KSNetworkActivityIndicatorManager sharedManager] decrease];
+	}
+	
+	if (connection == self.urlConnection) {
+		self.errorBlock(self, error);
+		self.activeDownloadData = nil;
+		self.urlConnection = nil;
+		self.urlResponse = nil;
+		if (self.outputStream) {
+			[self.outputStream close];
+			[[NSFileManager defaultManager] removeItemAtURL:self.tmpFileUrl error:nil];
+		}
+	}
+}
+
+- (void)connectionDidFinishLoading:(NSURLConnection *)connection {
+	if (!self.operationEnded) {
+		self.operationEnded = YES;
+		[[KSNetworkActivityIndicatorManager sharedManager] decrease];
+	}
+    if (connection == self.urlConnection) {
+		[self.outputStream close];
+		
+		if (self.urlResponse.statusCode < 400) { // let's assume everything below 400 indicates a success :-)
+			if (self.jsonSuccessBlock) {
+				NSError *error;
+				id responseObject = [NSJSONSerialization JSONObjectWithData:self.activeDownloadData options:0 error:&error];
+				if (responseObject == nil) {
+					self.errorBlock(self, error);
+				} else {
+					self.jsonSuccessBlock(self, responseObject);
+				}
+			} else if (self.successBlock) {
+				NSString *stringData = nil;
+				NSStringEncoding stringEncoding;
+				if (self.urlResponse.textEncodingName.length > 0) {
+					CFStringEncoding encoding = CFStringConvertIANACharSetNameToEncoding((__bridge CFStringRef)(self.urlResponse.textEncodingName));
+					stringEncoding = CFStringConvertEncodingToNSStringEncoding(encoding);
+				} else {
+					stringEncoding = NSUTF8StringEncoding; // assume utf-8 if the server sends no header
+				}
+				
+				stringData = [[NSString alloc] initWithData:self.activeDownloadData encoding:stringEncoding];
+				
+				self.successBlock(self, self.activeDownloadData, stringData);
+			} else if (self.fileSuccessBlock) {
+				// move the file to the target url
+				[[NSFileManager defaultManager] removeItemAtURL:self.targetFileUrl error:nil];
+				NSError *error;
+				[[NSFileManager defaultManager] moveItemAtURL:self.tmpFileUrl toURL:self.targetFileUrl error:&error];
+				if (error) {
+					self.errorBlock(self, error);
+					return;
+				}
+				self.fileSuccessBlock(self);
+			}
+		} else {
+			NSError *error = [NSError errorWithDomain:@"httpError" code:self.urlResponse.statusCode userInfo:@{NSLocalizedDescriptionKey: @"Invalid HTTP Reponse Code"}];
+			self.errorBlock(self, error);
+		}
+		
+		self.activeDownloadData = nil;
+		self.urlConnection = nil;
+		self.urlResponse = nil;
+	}
+}
+
+- (BOOL)connection:(NSURLConnection *)connection canAuthenticateAgainstProtectionSpace:(NSURLProtectionSpace *)protectionSpace {
+	// return YES for HTTP Basic Authentication, we don't support anything else
+	return self.credential && [protectionSpace.authenticationMethod isEqualToString:NSURLAuthenticationMethodHTTPBasic];
+}
+
+- (void)connection:(NSURLConnection *)connection didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge {
+	// authenticate with http basic
+	[challenge.sender useCredential:self.credential forAuthenticationChallenge:challenge];
+}
+
+#pragma mark - Utility
+- (NSString*)urlEncode:(NSString*)input {
+	NSString *encodedString = (NSString *)CFBridgingRelease(CFURLCreateStringByAddingPercentEscapes(NULL,(CFStringRef)input,NULL,(CFStringRef)@"!*'();:@&=+$,/?%#[]",kCFStringEncodingUTF8 ));
+	return encodedString;
+}
+@end
