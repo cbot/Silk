@@ -21,16 +21,18 @@
 @property (nonatomic, copy) NSURL *targetFileUrl;
 @property (nonatomic, copy) NSURL *tmpFileUrl;
 @property (nonatomic, strong) NSOutputStream *outputStream;
-@property (nonatomic, assign) long long outputStreamWrittenBytes;
+@property (nonatomic, assign) long long outputStreamBytesWritten;
 @property (nonatomic, strong) NSMutableDictionary *headers;
 @end
 
 static NSMutableDictionary *globalHeaders;
+static BOOL useNetworkActivityIndicatorManager;
 
 @implementation KSDataDownloader
 + (void)initialize {
     if (self == [KSDataDownloader class]) {
         globalHeaders = [NSMutableDictionary dictionary];
+		useNetworkActivityIndicatorManager = YES;
     }
 }
 
@@ -67,7 +69,7 @@ static NSMutableDictionary *globalHeaders;
 }
 
 - (void)setDefaults {
-	self.timeoutSeconds = 45;
+	self.timeoutSeconds = 90;
 	self.method = @"GET";
 	self.headers = [NSMutableDictionary dictionary];
 	
@@ -80,8 +82,9 @@ static NSMutableDictionary *globalHeaders;
 - (void)cancelDownload {
 	if (!self.operationEnded) {
 		self.operationEnded = YES;
-		[[KSNetworkActivityIndicatorManager sharedManager] decrease];
+		if (useNetworkActivityIndicatorManager) [[KSNetworkActivityIndicatorManager sharedManager] decrease];
 	}
+	
 	[self.urlConnection cancel];
 	self.urlConnection = nil;
 	self.activeDownloadData = nil;
@@ -103,13 +106,13 @@ static NSMutableDictionary *globalHeaders;
 		self.tmpFileUrl = [[NSURL fileURLWithPath:tmpPath] URLByAppendingPathComponent:guid];
 		self.outputStream = [NSOutputStream outputStreamWithURL:self.tmpFileUrl append:NO];
 		[self.outputStream open];
-		self.outputStreamWrittenBytes = 0;
+		self.outputStreamBytesWritten = 0;
 	} else { // download to memory
 		self.activeDownloadData = [NSMutableData data];
 	}
 	
 	self.urlResponse = nil;
-	[[KSNetworkActivityIndicatorManager sharedManager] increase];
+	if (useNetworkActivityIndicatorManager) [[KSNetworkActivityIndicatorManager sharedManager] increase];
 	NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url cachePolicy:NSURLRequestUseProtocolCachePolicy timeoutInterval:self.timeoutSeconds];
 	request.HTTPMethod = self.method;
 	
@@ -134,7 +137,7 @@ static NSMutableDictionary *globalHeaders;
 			} else if ([unknownTypeValue isKindOfClass:[NSNull class]]) {
 				value = @"";
 				[queryString appendFormat:@"%@=%@&", key, [self urlEncode:value]];
-			} else if ([unknownTypeValue isKindOfClass:[NSArray class]]) { // modifications to support the Rails array syntax!
+			} else if ([unknownTypeValue isKindOfClass:[NSArray class]]) {
 				NSArray *valueArray = (NSArray*)unknownTypeValue;
 				NSString *modifiedKey = [key stringByAppendingString:@"[]"];
 				
@@ -158,7 +161,7 @@ static NSMutableDictionary *globalHeaders;
 			request.URL = [NSURL URLWithString:[NSString stringWithFormat:@"%@?%@", url.absoluteString, queryString]];
 		} else if ([self.method isEqualToString:@"POST"] || [self.method isEqualToString:@"PUT"]) {
 			NSData *queryData = [NSData dataWithBytes: [queryString UTF8String] length:queryString.length];
-			[request setValue:@"application/x-KSw-form-urlencoded" forHTTPHeaderField:@"Content-Type"];
+			[request setValue:@"x-www-form-urlencoded; charset=utf-8" forHTTPHeaderField:@"Content-Type"];
 			[request setHTTPBody: queryData];
 		}
 	} else if (bodyData) {
@@ -210,6 +213,11 @@ static NSMutableDictionary *globalHeaders;
 	if (key != nil) [globalHeaders removeObjectForKey:key];
 }
 
+#pragma mark - NetworkActivityIndicatorManager
++ (void)setUseNetworkActivityIndicatorManager:(BOOL)showIndicator {
+	useNetworkActivityIndicatorManager = showIndicator;
+}
+
 #pragma mark - Download support (NSURLConnectionDelegate)
 - (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSHTTPURLResponse *)response {
 	self.contentLength = [response.allHeaderFields[@"Content-Length"] longLongValue];
@@ -222,7 +230,7 @@ static NSMutableDictionary *globalHeaders;
 - (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)data {
     if (connection == self.urlConnection) {
 		if (self.outputStream) { // file download
-			self.outputStreamWrittenBytes += [self.outputStream write:data.bytes maxLength:data.length];
+			self.outputStreamBytesWritten += [self.outputStream write:data.bytes maxLength:data.length];
 		} else { // download to memory
 			[self.activeDownloadData appendData:data];
 		}
@@ -230,7 +238,7 @@ static NSMutableDictionary *globalHeaders;
 			float progress;
 			
 			if (self.outputStream)
-				progress = 0.15f + 0.85 * ((double)self.outputStreamWrittenBytes / (double)self.contentLength);
+				progress = 0.15f + 0.85 * ((double)self.outputStreamBytesWritten / (double)self.contentLength);
 			else
 				progress = 0.15f + 0.85 * ((double)self.activeDownloadData.length / (double)self.contentLength);
 			
@@ -242,7 +250,7 @@ static NSMutableDictionary *globalHeaders;
 - (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error {
 	if (!self.operationEnded) {
 		self.operationEnded = YES;
-		[[KSNetworkActivityIndicatorManager sharedManager] decrease];
+		if (useNetworkActivityIndicatorManager) [[KSNetworkActivityIndicatorManager sharedManager] decrease];
 	}
 	
 	if (connection == self.urlConnection) {
@@ -260,7 +268,7 @@ static NSMutableDictionary *globalHeaders;
 - (void)connectionDidFinishLoading:(NSURLConnection *)connection {
 	if (!self.operationEnded) {
 		self.operationEnded = YES;
-		[[KSNetworkActivityIndicatorManager sharedManager] decrease];
+		if (useNetworkActivityIndicatorManager) [[KSNetworkActivityIndicatorManager sharedManager] decrease];
 	}
     if (connection == self.urlConnection) {
 		[self.outputStream close];

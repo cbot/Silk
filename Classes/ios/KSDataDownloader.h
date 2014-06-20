@@ -20,13 +20,15 @@
 
 - (void)setHeader:(NSString*)value forKey:(NSString*)key;
 - (void)removeHeaderForKey:(NSString*)key;
++ (void)setGlobalHeader:(NSString*)value forKey:(NSString*)key;
++ (void)removeGlobalHeaderForKey:(NSString*)key;
+
+- (void)setUsername:(NSString*)username andPassword:(NSString*)password;
 
 - (void)startRequest:(NSURL *)url;
 - (void)startRequest:(NSURL *)url parameters:(NSDictionary*)parameters;
 - (void)startRequest:(NSURL *)url parameters:(NSDictionary*)parameters httpBodyData:(NSData*)bodyData;
-- (void)setUsername:(NSString*)username andPassword:(NSString*)password;
 - (void)cancelDownload;
 
-+ (void)setGlobalHeader:(NSString*)value forKey:(NSString*)key;
-+ (void)removeGlobalHeaderForKey:(NSString*)key;
++ (void)setUseNetworkActivityIndicatorManager:(BOOL)showIndicator;
 @end
