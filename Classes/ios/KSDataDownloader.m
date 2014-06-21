@@ -23,6 +23,7 @@
 @property (nonatomic, strong) NSOutputStream *outputStream;
 @property (nonatomic, assign) long long outputStreamBytesWritten;
 @property (nonatomic, strong) NSMutableDictionary *headers;
+@property (nonatomic, assign) UIBackgroundTaskIdentifier backgroundTaskIdentifier;
 @end
 
 static NSMutableDictionary *globalHeaders;
@@ -72,6 +73,7 @@ static BOOL useNetworkActivityIndicatorManager;
 	self.timeoutSeconds = 90;
 	self.method = @"GET";
 	self.headers = [NSMutableDictionary dictionary];
+	self.backgroundTaskIdentifier = UIBackgroundTaskInvalid;
 	
 	for (NSString *key in globalHeaders) {
 		self.headers[key] = globalHeaders[key];
@@ -89,12 +91,13 @@ static BOOL useNetworkActivityIndicatorManager;
 	self.urlConnection = nil;
 	self.activeDownloadData = nil;
 	self.urlResponse = nil;
+	if (self.backgroundTaskIdentifier != UIBackgroundTaskInvalid) [[UIApplication sharedApplication] endBackgroundTask:self.backgroundTaskIdentifier];
 }
 
 #pragma mark - Request startes
 - (void)startRequest:(NSURL *)url parameters:(NSDictionary*)parameters httpBodyData:(NSData*)bodyData {
 	if (url == nil) {
-		if (self.errorBlock) self.errorBlock(self, [NSError errorWithDomain:@"url error" code:-1 userInfo:@{NSLocalizedDescriptionKey: @"url can't be nil!"}]);
+		if (self.errorBlock) self.errorBlock(self, [NSError errorWithDomain:@"KSDataDownloader" code:KSDataDownloaderInvalidUrlErrorCode userInfo:@{NSLocalizedDescriptionKey: @"url can't be nil!"}]);
 		return;
 	}
 	
@@ -117,7 +120,7 @@ static BOOL useNetworkActivityIndicatorManager;
 	request.HTTPMethod = self.method;
 	
 	// enable/disable cookies
-	[request setHTTPShouldHandleCookies:!self.cookiesDisabled];
+	[request setHTTPShouldHandleCookies:!self.disableCookies];
 		
 	for (NSString *key in self.headers) {
 		[request setValue:self.headers[key] forHTTPHeaderField:key];
@@ -170,6 +173,14 @@ static BOOL useNetworkActivityIndicatorManager;
 		
 	self.urlConnection = [[NSURLConnection alloc] initWithRequest:request delegate:self startImmediately:NO];
 	[self.urlConnection scheduleInRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
+	
+	if (!self.disableBackgroundDownload) { // start background task unless disabled
+		self.backgroundTaskIdentifier = [[UIApplication sharedApplication] beginBackgroundTaskWithExpirationHandler:^{
+			[self cancelDownload];
+			if (self.errorBlock) self.errorBlock(self, [NSError errorWithDomain:@"KSDataDownloader" code:KSDataDownloaderBackgroundTaskNoTimeLeftErrorCode userInfo:@{NSLocalizedDescriptionKey: @"backround task has no time left"}]);
+		}];
+	}
+	
 	[self.urlConnection start];
 }
 
@@ -180,7 +191,6 @@ static BOOL useNetworkActivityIndicatorManager;
 - (void)startRequest:(NSURL *)url {
 	[self startRequest:url parameters:nil httpBodyData:nil];
 }
-
 
 #pragma mark - Credentials
 - (void)setUsername:(NSString*)username andPassword:(NSString*)password {
@@ -252,17 +262,17 @@ static BOOL useNetworkActivityIndicatorManager;
 		self.operationEnded = YES;
 		if (useNetworkActivityIndicatorManager) [[KSNetworkActivityIndicatorManager sharedManager] decrease];
 	}
-	
-	if (connection == self.urlConnection) {
-		self.errorBlock(self, error);
-		self.activeDownloadData = nil;
-		self.urlConnection = nil;
-		self.urlResponse = nil;
-		if (self.outputStream) {
-			[self.outputStream close];
-			[[NSFileManager defaultManager] removeItemAtURL:self.tmpFileUrl error:nil];
-		}
+
+	self.errorBlock(self, error);
+	self.activeDownloadData = nil;
+	self.urlConnection = nil;
+	self.urlResponse = nil;
+	if (self.outputStream) {
+		[self.outputStream close];
+		[[NSFileManager defaultManager] removeItemAtURL:self.tmpFileUrl error:nil];
 	}
+	
+	if (self.backgroundTaskIdentifier != UIBackgroundTaskInvalid) [[UIApplication sharedApplication] endBackgroundTask:self.backgroundTaskIdentifier];
 }
 
 - (void)connectionDidFinishLoading:(NSURLConnection *)connection {
@@ -270,51 +280,54 @@ static BOOL useNetworkActivityIndicatorManager;
 		self.operationEnded = YES;
 		if (useNetworkActivityIndicatorManager) [[KSNetworkActivityIndicatorManager sharedManager] decrease];
 	}
-    if (connection == self.urlConnection) {
-		[self.outputStream close];
-		
-		if (self.urlResponse.statusCode < 400) { // let's assume everything below 400 indicates a success :-)
-			if (self.jsonSuccessBlock) {
-				NSError *error;
-				id responseObject = [NSJSONSerialization JSONObjectWithData:self.activeDownloadData options:0 error:&error];
-				if (responseObject == nil) {
-					self.errorBlock(self, error);
-				} else {
-					self.jsonSuccessBlock(self, responseObject);
-				}
-			} else if (self.successBlock) {
-				NSString *stringData = nil;
-				NSStringEncoding stringEncoding;
-				if (self.urlResponse.textEncodingName.length > 0) {
-					CFStringEncoding encoding = CFStringConvertIANACharSetNameToEncoding((__bridge CFStringRef)(self.urlResponse.textEncodingName));
-					stringEncoding = CFStringConvertEncodingToNSStringEncoding(encoding);
-				} else {
-					stringEncoding = NSUTF8StringEncoding; // assume utf-8 if the server sends no header
-				}
-				
-				stringData = [[NSString alloc] initWithData:self.activeDownloadData encoding:stringEncoding];
-				
-				self.successBlock(self, self.activeDownloadData, stringData);
-			} else if (self.fileSuccessBlock) {
-				// move the file to the target url
-				[[NSFileManager defaultManager] removeItemAtURL:self.targetFileUrl error:nil];
-				NSError *error;
-				[[NSFileManager defaultManager] moveItemAtURL:self.tmpFileUrl toURL:self.targetFileUrl error:&error];
-				if (error) {
-					self.errorBlock(self, error);
-					return;
-				}
+	
+	[self.outputStream close];
+	
+	if (self.urlResponse.statusCode < 400) { // let's assume everything below 400 indicates a success :-)
+		if (self.jsonSuccessBlock) {
+			NSError *error;
+			id responseObject = [NSJSONSerialization JSONObjectWithData:self.activeDownloadData options:0 error:&error];
+			if (responseObject == nil) {
+				if (self.errorBlock) self.errorBlock(self, error);
+			} else {
+				self.jsonSuccessBlock(self, responseObject);
+			}
+		} else if (self.successBlock) {
+			NSString *stringData = nil;
+			NSStringEncoding stringEncoding;
+			if (self.urlResponse.textEncodingName.length > 0) {
+				CFStringEncoding encoding = CFStringConvertIANACharSetNameToEncoding((__bridge CFStringRef)(self.urlResponse.textEncodingName));
+				stringEncoding = CFStringConvertEncodingToNSStringEncoding(encoding);
+			} else {
+				stringEncoding = NSUTF8StringEncoding; // assume utf-8 if the server sends no header
+			}
+			
+			stringData = [[NSString alloc] initWithData:self.activeDownloadData encoding:stringEncoding];
+			
+			self.successBlock(self, self.activeDownloadData, stringData);
+		} else if (self.fileSuccessBlock) {
+			NSError *error;
+			
+			// make sure there is nothing in the way
+			[[NSFileManager defaultManager] removeItemAtURL:self.targetFileUrl error:&error];
+			
+			// move the file to the target url
+			BOOL success = [[NSFileManager defaultManager] moveItemAtURL:self.tmpFileUrl toURL:self.targetFileUrl error:&error];
+			if (!success) {
+				if (self.errorBlock) self.errorBlock(self, error);
+			} else {
 				self.fileSuccessBlock(self);
 			}
-		} else {
-			NSError *error = [NSError errorWithDomain:@"httpError" code:self.urlResponse.statusCode userInfo:@{NSLocalizedDescriptionKey: @"Invalid HTTP Reponse Code"}];
-			self.errorBlock(self, error);
 		}
-		
-		self.activeDownloadData = nil;
-		self.urlConnection = nil;
-		self.urlResponse = nil;
+	} else {
+		NSError *error = [NSError errorWithDomain:@"KSDataDownloader" code:self.urlResponse.statusCode userInfo:@{NSLocalizedDescriptionKey: @"Invalid HTTP Reponse Code"}];
+		if (self.errorBlock) self.errorBlock(self, error);
 	}
+	
+	self.activeDownloadData = nil;
+	self.urlConnection = nil;
+	self.urlResponse = nil;
+	if (self.backgroundTaskIdentifier != UIBackgroundTaskInvalid) [[UIApplication sharedApplication] endBackgroundTask:self.backgroundTaskIdentifier];
 }
 
 - (BOOL)connection:(NSURLConnection *)connection canAuthenticateAgainstProtectionSpace:(NSURLProtectionSpace *)protectionSpace {

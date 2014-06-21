@@ -6,13 +6,17 @@
 
 #import <Foundation/Foundation.h>
 
+#define KSDataDownloaderInvalidUrlErrorCode -1
+#define KSDataDownloaderBackgroundTaskNoTimeLeftErrorCode -2
+
 @interface KSDataDownloader : NSObject <NSURLConnectionDataDelegate>
 @property (nonatomic, strong, readonly) NSURLConnection *urlConnection;
 @property (nonatomic, strong, readonly) NSHTTPURLResponse *urlResponse;
 @property (nonatomic, assign) int timeoutSeconds;
 @property (nonatomic, copy) NSString *method;
 @property (nonatomic, copy) void (^progressBlock)(KSDataDownloader *downloader, float progress);
-@property (nonatomic, assign) BOOL cookiesDisabled;
+@property (nonatomic, assign) BOOL disableCookies;
+@property (nonatomic, assign) BOOL disableBackgroundDownload;
 
 - (id)initWithCompletionBlock:(void(^)(KSDataDownloader *downloader, NSData *data, NSString *stringData))success error:(void(^)(KSDataDownloader *downloader, NSError*error))error;
 - (id)initWithJSONCompletionBlock:(void(^)(KSDataDownloader *downloader, id responseObject))success error:(void(^)(KSDataDownloader *downloader, NSError*error))error;
