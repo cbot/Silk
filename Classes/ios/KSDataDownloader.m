@@ -184,6 +184,10 @@ static BOOL useNetworkActivityIndicatorManager;
 	[self.urlConnection start];
 }
 
+- (void)startRequest:(NSURL *)url httpBodyData:(NSData*)httpBodyData {
+	[self startRequest:url parameters:nil httpBodyData:httpBodyData];
+}
+
 - (void)startRequest:(NSURL *)url parameters:(NSDictionary*)parameters {
 	[self startRequest:url parameters:parameters httpBodyData:nil];
 }
@@ -228,12 +232,13 @@ static BOOL useNetworkActivityIndicatorManager;
 	useNetworkActivityIndicatorManager = showIndicator;
 }
 
-#pragma mark - Download support (NSURLConnectionDelegate)
+#pragma mark - NSURLConnectionDelegate
 - (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSHTTPURLResponse *)response {
 	self.contentLength = [response.allHeaderFields[@"Content-Length"] longLongValue];
 	if (self.progressBlock != nil && self.contentLength > 0) {
 		self.progressBlock(self, 0.15f);
 	}
+	if (self.uploadProgressBlock) self.uploadProgressBlock(self, 0.0f);
 	self.urlResponse = response;
 }
 
@@ -338,6 +343,13 @@ static BOOL useNetworkActivityIndicatorManager;
 - (void)connection:(NSURLConnection *)connection didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge {
 	// authenticate with http basic
 	[challenge.sender useCredential:self.credential forAuthenticationChallenge:challenge];
+}
+
+- (void)connection:(NSURLConnection *)connection didSendBodyData:(NSInteger)bytesWritten totalBytesWritten:(NSInteger)totalBytesWritten totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
+	if (totalBytesExpectedToWrite != 0) {
+		float progress = (float)totalBytesWritten / (float)totalBytesExpectedToWrite;
+		if (self.uploadProgressBlock) self.uploadProgressBlock(self, progress);
+	}
 }
 
 #pragma mark - Utility

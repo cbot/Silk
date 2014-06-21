@@ -15,6 +15,7 @@
 @property (nonatomic, assign) int timeoutSeconds;
 @property (nonatomic, copy) NSString *method;
 @property (nonatomic, copy) void (^progressBlock)(KSDataDownloader *downloader, float progress);
+@property (nonatomic, copy) void (^uploadProgressBlock)(KSDataDownloader *downloader, float progress);
 @property (nonatomic, assign) BOOL disableCookies;
 @property (nonatomic, assign) BOOL disableBackgroundDownload;
 
@@ -31,7 +32,7 @@
 
 - (void)startRequest:(NSURL *)url;
 - (void)startRequest:(NSURL *)url parameters:(NSDictionary*)parameters;
-- (void)startRequest:(NSURL *)url parameters:(NSDictionary*)parameters httpBodyData:(NSData*)bodyData;
+- (void)startRequest:(NSURL *)url httpBodyData:(NSData*)httpBodyData;
 - (void)cancelDownload;
 
 + (void)setUseNetworkActivityIndicatorManager:(BOOL)showIndicator;
