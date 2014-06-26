@@ -164,7 +164,7 @@ static BOOL useNetworkActivityIndicatorManager;
 			request.URL = [NSURL URLWithString:[NSString stringWithFormat:@"%@?%@", url.absoluteString, queryString]];
 		} else if ([self.method isEqualToString:@"POST"] || [self.method isEqualToString:@"PUT"]) {
 			NSData *queryData = [NSData dataWithBytes: [queryString UTF8String] length:queryString.length];
-			[request setValue:@"x-www-form-urlencoded; charset=utf-8" forHTTPHeaderField:@"Content-Type"];
+			[request setValue:@"application/x-www-form-urlencoded; charset=utf-8" forHTTPHeaderField:@"Content-Type"];
 			[request setHTTPBody: queryData];
 		}
 	} else if (bodyData) {
