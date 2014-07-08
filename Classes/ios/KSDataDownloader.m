@@ -91,7 +91,10 @@ static BOOL useNetworkActivityIndicatorManager;
 	self.urlConnection = nil;
 	self.activeDownloadData = nil;
 	self.urlResponse = nil;
-	if (self.backgroundTaskIdentifier != UIBackgroundTaskInvalid) [[UIApplication sharedApplication] endBackgroundTask:self.backgroundTaskIdentifier];
+	if (self.backgroundTaskIdentifier != UIBackgroundTaskInvalid) {
+		[[UIApplication sharedApplication] endBackgroundTask:self.backgroundTaskIdentifier];
+		self.backgroundTaskIdentifier = UIBackgroundTaskInvalid;
+	}
 }
 
 #pragma mark - Request startes
@@ -178,6 +181,8 @@ static BOOL useNetworkActivityIndicatorManager;
 		self.backgroundTaskIdentifier = [[UIApplication sharedApplication] beginBackgroundTaskWithExpirationHandler:^{
 			[self cancelDownload];
 			if (self.errorBlock) self.errorBlock(self, [NSError errorWithDomain:@"KSDataDownloader" code:KSDataDownloaderBackgroundTaskNoTimeLeftErrorCode userInfo:@{NSLocalizedDescriptionKey: @"backround task has no time left"}]);
+			[[UIApplication sharedApplication] endBackgroundTask:self.backgroundTaskIdentifier];
+			self.backgroundTaskIdentifier = UIBackgroundTaskInvalid;
 		}];
 	}
 	
@@ -277,7 +282,10 @@ static BOOL useNetworkActivityIndicatorManager;
 		[[NSFileManager defaultManager] removeItemAtURL:self.tmpFileUrl error:nil];
 	}
 	
-	if (self.backgroundTaskIdentifier != UIBackgroundTaskInvalid) [[UIApplication sharedApplication] endBackgroundTask:self.backgroundTaskIdentifier];
+	if (self.backgroundTaskIdentifier != UIBackgroundTaskInvalid) {
+		[[UIApplication sharedApplication] endBackgroundTask:self.backgroundTaskIdentifier];
+		self.backgroundTaskIdentifier = UIBackgroundTaskInvalid;
+	}
 }
 
 - (void)connectionDidFinishLoading:(NSURLConnection *)connection {
@@ -332,7 +340,10 @@ static BOOL useNetworkActivityIndicatorManager;
 	self.activeDownloadData = nil;
 	self.urlConnection = nil;
 	self.urlResponse = nil;
-	if (self.backgroundTaskIdentifier != UIBackgroundTaskInvalid) [[UIApplication sharedApplication] endBackgroundTask:self.backgroundTaskIdentifier];
+	if (self.backgroundTaskIdentifier != UIBackgroundTaskInvalid) {
+		[[UIApplication sharedApplication] endBackgroundTask:self.backgroundTaskIdentifier];
+		self.backgroundTaskIdentifier = UIBackgroundTaskInvalid;
+	}
 }
 
 - (BOOL)connection:(NSURLConnection *)connection canAuthenticateAgainstProtectionSpace:(NSURLProtectionSpace *)protectionSpace {
