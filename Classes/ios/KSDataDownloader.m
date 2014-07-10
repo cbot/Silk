@@ -300,7 +300,7 @@ static BOOL useNetworkActivityIndicatorManager;
 		if (self.jsonSuccessBlock) {
 			NSError *error;
 			id responseObject = [NSJSONSerialization JSONObjectWithData:self.activeDownloadData options:0 error:&error];
-			if (responseObject == nil) {
+			if (responseObject == nil && self.activeDownloadData.length > 0) {
 				if (self.errorBlock) self.errorBlock(self, error);
 			} else {
 				self.jsonSuccessBlock(self, responseObject);
