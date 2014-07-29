@@ -35,5 +35,7 @@
 - (void)startRequest:(NSURL *)url httpBodyData:(NSData*)httpBodyData;
 - (void)cancelDownload;
 
+- (NSData*)downloadedData;
+
 + (void)setUseNetworkActivityIndicatorManager:(BOOL)showIndicator;
 @end

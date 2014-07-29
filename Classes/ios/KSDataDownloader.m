@@ -201,6 +201,10 @@ static BOOL useNetworkActivityIndicatorManager;
 	[self startRequest:url parameters:nil httpBodyData:nil];
 }
 
+- (NSData*)downloadedData {
+	return [self.activeDownloadData copy];
+}
+
 #pragma mark - Credentials
 - (void)setUsername:(NSString*)username andPassword:(NSString*)password {
 	NSURLCredential *credential = [NSURLCredential credentialWithUser:username password:password persistence:NSURLCredentialPersistenceNone];
