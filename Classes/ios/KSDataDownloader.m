@@ -303,8 +303,9 @@ static BOOL useNetworkActivityIndicatorManager;
 	if (self.urlResponse.statusCode < 400) { // let's assume everything below 400 indicates a success :-)
 		if (self.jsonSuccessBlock) {
 			NSError *error;
-			id responseObject = [NSJSONSerialization JSONObjectWithData:self.activeDownloadData options:0 error:&error];
-			if (responseObject == nil && self.activeDownloadData.length > 0) {
+            
+            id responseObject = self.activeDownloadData == nil ? nil : [NSJSONSerialization JSONObjectWithData:self.activeDownloadData options:0 error:&error];
+			if (responseObject == nil) {
 				if (self.errorBlock) self.errorBlock(self, error);
 			} else {
 				self.jsonSuccessBlock(self, responseObject);
@@ -319,7 +320,7 @@ static BOOL useNetworkActivityIndicatorManager;
 				stringEncoding = NSUTF8StringEncoding; // assume utf-8 if the server sends no header
 			}
 			
-			stringData = [[NSString alloc] initWithData:self.activeDownloadData encoding:stringEncoding];
+            stringData = self.activeDownloadData == nil ? @"" : [[NSString alloc] initWithData:self.activeDownloadData encoding:stringEncoding];
 			
 			self.successBlock(self, self.activeDownloadData, stringData);
 		} else if (self.fileSuccessBlock) {
