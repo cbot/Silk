@@ -7,5 +7,5 @@ KSDataDownloader is a thin layer on top of NSURLConnection. While it may not be 
 ## Installation
 Use CocoaPods to add KSDataDownloader to your project. Just add the following line to your Podfile.
 ```
-pod 'KSDataDownloader', '~> 1.0.4'
+pod 'KSDataDownloader', '~> 1.0.6'
 ```

@@ -302,14 +302,8 @@ static BOOL useNetworkActivityIndicatorManager;
 	
 	if (self.urlResponse.statusCode < 400) { // let's assume everything below 400 indicates a success :-)
 		if (self.jsonSuccessBlock) {
-			NSError *error;
-            
-            id responseObject = self.activeDownloadData == nil ? nil : [NSJSONSerialization JSONObjectWithData:self.activeDownloadData options:0 error:&error];
-			if (responseObject == nil) {
-				if (self.errorBlock) self.errorBlock(self, error);
-			} else {
-				self.jsonSuccessBlock(self, responseObject);
-			}
+            id responseObject = self.activeDownloadData.length == 0 ? nil : [NSJSONSerialization JSONObjectWithData:self.activeDownloadData options:0 error:nil];
+			self.jsonSuccessBlock(self, responseObject);
 		} else if (self.successBlock) {
 			NSString *stringData = nil;
 			NSStringEncoding stringEncoding;

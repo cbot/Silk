@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name         = "KSDataDownloader"
-  s.version      = "1.0.5"
+  s.version      = "1.0.6"
   s.summary      = "A thin layer on top of NSURLConnection"
   s.homepage     = "https://github.com/cbot/KSDataDownloader"
   s.license      = 'MIT'
