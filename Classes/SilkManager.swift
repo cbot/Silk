@@ -1,4 +1,4 @@
-import UIKit
+import Foundation
 
 public class SilkManager: NSObject, NSURLSessionDelegate, NSURLSessionTaskDelegate, NSURLSessionDataDelegate {
     public class var sharedInstance: SilkManager {
