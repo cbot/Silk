@@ -1,11 +1,11 @@
 Pod::Spec.new do |s|
   s.name         = "KSDataDownloader"
-  s.version      = "1.0.6"
+  s.version      = "1.0.7"
   s.summary      = "A thin layer on top of NSURLConnection"
-  s.homepage     = "https://github.com/cbot/KSDataDownloader"
+  s.homepage     = "https://github.com/cbot/Silk"
   s.license      = 'MIT'
   s.author       = { "Kai Straßmann" => "derkai@gmail.com" }
-  s.source       = { :git => "https://github.com/cbot/KSDataDownloader.git", :tag => s.version.to_s }
+  s.source       = { :git => "https://github.com/cbot/Silk.git", :tag => s.version.to_s }
 
   s.platform     = :ios, '7.0'
   s.ios.deployment_target = '7.0'
