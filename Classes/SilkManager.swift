@@ -12,6 +12,9 @@ public class SilkManager: NSObject, NSURLSessionDelegate, NSURLSessionTaskDelega
     
     lazy var session : NSURLSession = {
         let sessionConfig = NSURLSessionConfiguration.backgroundSessionConfigurationWithIdentifier(NSBundle.mainBundle().bundleIdentifier!)
+        sessionConfig.HTTPShouldUsePipelining = true
+        sessionConfig.URLCache = NSURLCache.sharedURLCache()
+        sessionConfig.URLCredentialStorage = NSURLCredentialStorage.sharedCredentialStorage()
         return NSURLSession(configuration: sessionConfig, delegate: self, delegateQueue: NSOperationQueue.mainQueue())
     }()
     
