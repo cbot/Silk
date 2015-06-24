@@ -107,7 +107,11 @@ public class SilkManager: NSObject, NSURLSessionDelegate, NSURLSessionTaskDelega
     
     public func URLSession(session: NSURLSession, task: NSURLSessionTask, didReceiveChallenge challenge: NSURLAuthenticationChallenge, completionHandler: (NSURLSessionAuthChallengeDisposition, NSURLCredential!) -> Void) {
         if let request = requestForTag(task.taskDescription) as? HttpRequest, credentials = request.credentials {
-            completionHandler(.UseCredential, credentials)
+            if task.currentRequest.valueForHTTPHeaderField("Authorization") == nil {
+                completionHandler(.UseCredential, credentials)
+            } else {
+                completionHandler(.PerformDefaultHandling, nil)
+            }
         } else {
             completionHandler(.PerformDefaultHandling, nil)
         }
