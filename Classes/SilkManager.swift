@@ -9,6 +9,7 @@ public class SilkManager: NSObject, NSURLSessionDelegate, NSURLSessionTaskDelega
     }
     
     private var registeredRequests = [String: Request]()
+    private var backgroundSessionCompletionHandler: (() -> Void)?
     
     lazy var session : NSURLSession = {
         let sessionConfig = NSURLSessionConfiguration.backgroundSessionConfigurationWithIdentifier(NSBundle.mainBundle().bundleIdentifier!)
@@ -58,6 +59,13 @@ public class SilkManager: NSObject, NSURLSessionDelegate, NSURLSessionTaskDelega
         }
     }
     
+    // MARK: - Background Sessions
+    public func setBackgroundSessionCompletionHandler(completionHandler: () -> Void, sessionIdentifier: String) {
+        if session.configuration.identifier == sessionIdentifier {
+            backgroundSessionCompletionHandler = completionHandler
+        }
+    }
+    
     // MARK: - Request tracking
     func registerRequest(request: Request) {
         registeredRequests[request.tag] = request
@@ -65,6 +73,12 @@ public class SilkManager: NSObject, NSURLSessionDelegate, NSURLSessionTaskDelega
     
     func unregisterRequest(request: Request) {
         registeredRequests[request.tag] = nil
+    }
+    
+    // MARK: - NSURLSessionDelegate
+    public func URLSessionDidFinishEventsForBackgroundURLSession(session: NSURLSession) {
+        backgroundSessionCompletionHandler?()
+        backgroundSessionCompletionHandler = nil
     }
     
     // MARK: - NSURLSessionDataDelegate
