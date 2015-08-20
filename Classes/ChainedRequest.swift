@@ -4,14 +4,14 @@ public class ChainedRequest: CompoundRequest {
     private var requests = [HttpRequest]()
     private var requestIndex = 0
     
-    override public func add(request: HttpRequest) -> Self {
+    public override func add(request: HttpRequest) -> Self {
         super.add(request)
         requests.append(request)
         return self
     }
     
     public func then(request: HttpRequest) -> Self {
-        add(request)
+        super.add(request)
         return self
     }
     
@@ -46,7 +46,7 @@ public class ChainedRequest: CompoundRequest {
         }
     }
     
-    override public func execute() -> Bool {
+    public override func execute() -> Bool {
         if !super.execute() {
             return false
         }
@@ -57,7 +57,7 @@ public class ChainedRequest: CompoundRequest {
         return true
     }
     
-    override public func cancel() {
+    public override func cancel() {
         for request in requests {
             request.cancel()
         }

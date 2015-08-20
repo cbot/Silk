@@ -3,14 +3,14 @@ import Foundation
 public class ParallelRequest: CompoundRequest {
     private var requests = [HttpRequest]()
     
-    override public func add(request: HttpRequest) -> Self {
+    public override func add(request: HttpRequest) -> Self {
         super.add(request)
         requests.append(request)
         return self
     }
     
     private func remove(request: HttpRequest, error: NSError? = nil, body: String? = nil, data: NSData? = nil, response: NSHTTPURLResponse? = nil) {
-        if let index = find(requests, request) {
+        if let index = requests.indexOf(request) {
             requests.removeAtIndex(index)
         }
         
@@ -29,7 +29,7 @@ public class ParallelRequest: CompoundRequest {
         }
     }
     
-    override public func execute() -> Bool {
+    public override func execute() -> Bool {
         if !super.execute() {
             return false
         }
@@ -60,7 +60,7 @@ public class ParallelRequest: CompoundRequest {
         return started
     }
     
-    override public func cancel() {
+    public override func cancel() {
         for request in requests {
             request.cancel()
         }

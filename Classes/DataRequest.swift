@@ -9,7 +9,7 @@ public class DataRequest: HttpRequest {
         
         var bodyString = ""
         for (key, value) in data {
-            if (count(bodyString) != 0) {
+            if (bodyString.characters.count != 0) {
                 bodyString += "&"
             }
             
@@ -38,10 +38,15 @@ public class DataRequest: HttpRequest {
             }
         }
         
-        if let data = data as? Dictionary<String, AnyObject>, bodyData = NSJSONSerialization.dataWithJSONObject(data, options: nil, error: nil) {
-            body(bodyData)
+        if let data = data as? Dictionary<String, AnyObject> {
+            do {
+                let bodyData = try NSJSONSerialization.dataWithJSONObject(data, options: [])
+                body(bodyData)
+            } catch {
+                print("[Silk] unable to encode body data")
+            }
         } else {
-            println("[Silk] unable to encode body data")
+            print("[Silk] unable to encode body data")
         }
         
         return self
@@ -50,24 +55,25 @@ public class DataRequest: HttpRequest {
     public func formJson(data: Array<AnyObject>) -> Self {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        if let data = NSJSONSerialization.dataWithJSONObject(data, options: nil, error: nil) {
+        do {
+            let data = try NSJSONSerialization.dataWithJSONObject(data, options: [])
             body(data)
-        } else {
-            println("[Silk] unable to encode body data")
+        } catch _ {
+            print("[Silk] unable to encode body data")
         }
         
         return self
     }
     
     // MARK: - Overridden methods
-    override public func cancel() {
+    public override func cancel() {
         super.cancel()
         if let task = task {
             task.cancel()
         }
     }
     
-    override public func execute() -> Bool {
+    public override func execute() -> Bool {
         if !(super.execute()) {
             return false
         }

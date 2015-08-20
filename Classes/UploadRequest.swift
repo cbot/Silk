@@ -5,7 +5,7 @@ public class UploadRequest: HttpRequest {
     private var uploadFileUrl: NSURL?
     private var tmpFileUrl: NSURL? {
         get {
-            return NSURL(fileURLWithPath: NSTemporaryDirectory()!)?.URLByAppendingPathComponent("upload-\(tag)")
+            return NSURL(fileURLWithPath: NSTemporaryDirectory()).URLByAppendingPathComponent("upload-\(tag)")
         }
     }
 
@@ -36,11 +36,11 @@ public class UploadRequest: HttpRequest {
                 if bodyData.writeToURL(tmpFileUrl, atomically: true) {
                     task = manager.session.uploadTaskWithRequest(request, fromFile: tmpFileUrl)
                 } else {
-                    println("[Silk] unable to write tmp upload file")
+                    print("[Silk] unable to write tmp upload file")
                 }
             }
         } else {
-            println("[Silk] unable to execute request - no data to upload")
+            print("[Silk] unable to execute request - no data to upload")
             return false
         }
         
@@ -62,7 +62,10 @@ public class UploadRequest: HttpRequest {
     // MARK: - Private Methods
     private func clearTmpFile() {
         if let tmpFileUrl = tmpFileUrl, tmpFilePath = tmpFileUrl.path where NSFileManager.defaultManager().fileExistsAtPath(tmpFilePath) {
-            NSFileManager.defaultManager().removeItemAtURL(tmpFileUrl, error: nil)
+            do {
+                try NSFileManager.defaultManager().removeItemAtURL(tmpFileUrl)
+            } catch _ {
+            }
         }
     }
 }

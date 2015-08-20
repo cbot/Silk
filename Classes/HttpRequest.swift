@@ -28,7 +28,7 @@ public class HttpRequest: Request {
             if let credentials = credentials, user = credentials.user, password = credentials.password {
                 let userPasswordString = "\(user):\(password)"
                 let userPasswordData = userPasswordString.dataUsingEncoding(NSUTF8StringEncoding)
-                let base64EncodedCredential = userPasswordData!.base64EncodedStringWithOptions(nil)
+                let base64EncodedCredential = userPasswordData!.base64EncodedStringWithOptions([])
                 let authString = "Basic \(base64EncodedCredential)"
                 request.setValue(authString, forHTTPHeaderField: "Authorization")
             }
@@ -61,7 +61,7 @@ public class HttpRequest: Request {
         if let bodyData = body.dataUsingEncoding(encoding, allowLossyConversion: false) {
             request.HTTPBody = bodyData
         } else {
-            println("[Silk] unable to encode body data")
+            print("[Silk] unable to encode body data")
         }
         return self
     }
@@ -112,9 +112,9 @@ public class HttpRequest: Request {
         execute()
     }
     
-    override public func execute() -> Bool {
+    public override func execute() -> Bool {
         if request.URL == nil {
-            println("[Silk] unable to execute request - url is nil!")
+            print("[Silk] unable to execute request - url is nil!")
             return false
         }
         
@@ -134,7 +134,7 @@ public class HttpRequest: Request {
         
         var stringEncoding : NSStringEncoding = NSUTF8StringEncoding // default
         if let encodingName = response.textEncodingName {
-            if count(encodingName) > 0 {
+            if encodingName.characters.count > 0 {
                 let encoding = CFStringConvertIANACharSetNameToEncoding(encodingName)
                 stringEncoding = CFStringConvertEncodingToNSStringEncoding(encoding)
             }

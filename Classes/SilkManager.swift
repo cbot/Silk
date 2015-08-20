@@ -105,9 +105,9 @@ public class SilkManager: NSObject, NSURLSessionDelegate, NSURLSessionTaskDelega
         }
     }
     
-    public func URLSession(session: NSURLSession, task: NSURLSessionTask, didReceiveChallenge challenge: NSURLAuthenticationChallenge, completionHandler: (NSURLSessionAuthChallengeDisposition, NSURLCredential!) -> Void) {
+    public func URLSession(session: NSURLSession, task: NSURLSessionTask, didReceiveChallenge challenge: NSURLAuthenticationChallenge, completionHandler: (NSURLSessionAuthChallengeDisposition, NSURLCredential?) -> Void) {
         if let request = requestForTag(task.taskDescription) as? HttpRequest, credentials = request.credentials {
-            if task.currentRequest.valueForHTTPHeaderField("Authorization") == nil {
+            if let currentRequest = task.currentRequest where currentRequest.valueForHTTPHeaderField("Authorization") == nil {
                 completionHandler(.UseCredential, credentials)
             } else {
                 completionHandler(.PerformDefaultHandling, nil)
@@ -118,8 +118,12 @@ public class SilkManager: NSObject, NSURLSessionDelegate, NSURLSessionTaskDelega
     }
     
     // MARK: - Utility
-    private func requestForTag(tag: String) -> Request? {
-        return registeredRequests[tag]
+    private func requestForTag(tag: String?) -> Request? {
+        if let tag = tag {
+            return registeredRequests[tag]
+        } else {
+            return nil
+        }
     }
     
     func urlEncode(input: String) -> String {
