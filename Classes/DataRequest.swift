@@ -58,7 +58,7 @@ public class DataRequest: HttpRequest {
         do {
             let data = try NSJSONSerialization.dataWithJSONObject(data, options: [])
             body(data)
-        } catch _ {
+        } catch {
             print("[Silk] unable to encode body data")
         }
         

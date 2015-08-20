@@ -64,8 +64,7 @@ public class UploadRequest: HttpRequest {
         if let tmpFileUrl = tmpFileUrl, tmpFilePath = tmpFileUrl.path where NSFileManager.defaultManager().fileExistsAtPath(tmpFilePath) {
             do {
                 try NSFileManager.defaultManager().removeItemAtURL(tmpFileUrl)
-            } catch _ {
-            }
+            } catch {}
         }
     }
 }
