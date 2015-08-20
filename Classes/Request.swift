@@ -9,7 +9,7 @@ public class Request: Equatable {
     internal(set) var errorClosure: ErrorClosure
     private(set) var tag: String = NSUUID().UUIDString
     private(set) var group = "Requests"
-    var compoundContext = [String: AnyObject]()
+    public var compoundContext = [String: AnyObject]()
     
     func context(context: [String: AnyObject]) -> Self {
         compoundContext = context
