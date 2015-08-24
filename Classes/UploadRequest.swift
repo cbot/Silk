@@ -21,6 +21,7 @@ public class UploadRequest: HttpRequest {
         if let task = task {
             task.cancel()
             clearTmpFile()
+            NSNotificationCenter.defaultCenter().postNotificationName("SilkRequestEnded", object: nil)
         }
     }
     
@@ -48,6 +49,7 @@ public class UploadRequest: HttpRequest {
             task.taskDescription = tag
             manager.registerRequest(self)
             task.resume()
+            NSNotificationCenter.defaultCenter().postNotificationName("SilkRequestStarted", object: nil)
             return true
         } else {
             return false

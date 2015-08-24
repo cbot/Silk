@@ -90,6 +90,8 @@ public class SilkManager: NSObject, NSURLSessionDelegate, NSURLSessionTaskDelega
     
     // MARK: - NSURLSessionTaskDelegate
     public func URLSession(session: NSURLSession, task: NSURLSessionTask, didCompleteWithError error: NSError?) {
+        NSNotificationCenter.defaultCenter().postNotificationName("SilkRequestEnded", object: nil)
+        
         // only connection errors are handled here!
         if let request = requestForTag(task.taskDescription), response = task.response as? NSHTTPURLResponse {
             request.handleResponse(response, error: error, task: task)
