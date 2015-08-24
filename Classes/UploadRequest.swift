@@ -31,11 +31,11 @@ public class UploadRequest: HttpRequest {
         }
         
         if let uploadFileUrl = uploadFileUrl, uploadFilePath = uploadFileUrl.path where NSFileManager.defaultManager().fileExistsAtPath(uploadFilePath) {
-            task = manager.session.uploadTaskWithRequest(request, fromFile: uploadFileUrl)
+            task = manager.backgroundSession.uploadTaskWithRequest(request, fromFile: uploadFileUrl)
         } else if let bodyData = request.HTTPBody {
             if let tmpFileUrl = tmpFileUrl {
                 if bodyData.writeToURL(tmpFileUrl, atomically: true) {
-                    task = manager.session.uploadTaskWithRequest(request, fromFile: tmpFileUrl)
+                    task = manager.backgroundSession.uploadTaskWithRequest(request, fromFile: tmpFileUrl)
                 } else {
                     println("[Silk] unable to write tmp upload file")
                 }

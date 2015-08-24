@@ -73,7 +73,7 @@ public class DataRequest: HttpRequest {
             return false
         }
         
-        task = manager.session.dataTaskWithRequest(request as NSURLRequest)
+        task = manager.ordinarySession.dataTaskWithRequest(request as NSURLRequest)
         if let task = task {
             task.taskDescription = tag
             manager.registerRequest(self)

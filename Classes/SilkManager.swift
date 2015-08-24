@@ -11,8 +11,16 @@ public class SilkManager: NSObject, NSURLSessionDelegate, NSURLSessionTaskDelega
     private var registeredRequests = [String: Request]()
     private var backgroundSessionCompletionHandler: (() -> Void)?
     
-    lazy var session : NSURLSession = {
+    lazy var backgroundSession : NSURLSession = {
         let sessionConfig = NSURLSessionConfiguration.backgroundSessionConfigurationWithIdentifier(NSBundle.mainBundle().bundleIdentifier!)
+        sessionConfig.HTTPShouldUsePipelining = true
+        sessionConfig.URLCache = NSURLCache.sharedURLCache()
+        sessionConfig.URLCredentialStorage = NSURLCredentialStorage.sharedCredentialStorage()
+        return NSURLSession(configuration: sessionConfig, delegate: self, delegateQueue: NSOperationQueue.mainQueue())
+    }()
+    
+    lazy var ordinarySession : NSURLSession = {
+        let sessionConfig = NSURLSessionConfiguration.defaultSessionConfiguration()
         sessionConfig.HTTPShouldUsePipelining = true
         sessionConfig.URLCache = NSURLCache.sharedURLCache()
         sessionConfig.URLCredentialStorage = NSURLCredentialStorage.sharedCredentialStorage()
@@ -61,7 +69,7 @@ public class SilkManager: NSObject, NSURLSessionDelegate, NSURLSessionTaskDelega
     
     // MARK: - Background Sessions
     public func setBackgroundSessionCompletionHandler(completionHandler: () -> Void, sessionIdentifier: String) {
-        if session.configuration.identifier == sessionIdentifier {
+        if backgroundSession.configuration.identifier == sessionIdentifier {
             backgroundSessionCompletionHandler = completionHandler
         }
     }
@@ -93,7 +101,8 @@ public class SilkManager: NSObject, NSURLSessionDelegate, NSURLSessionTaskDelega
         NSNotificationCenter.defaultCenter().postNotificationName("SilkRequestEnded", object: nil)
         
         // only connection errors are handled here!
-        if let request = requestForTag(task.taskDescription), response = task.response as? NSHTTPURLResponse {
+        if let request = requestForTag(task.taskDescription) {
+            let response = task.response as? NSHTTPURLResponse ?? NSHTTPURLResponse()
             request.handleResponse(response, error: error, task: task)
         }
     }
