@@ -15,8 +15,8 @@ public class HttpRequest: Request {
     }
     
     public func url(url: String?) -> Self {
-        if let url = url?.stringByAddingPercentEscapesUsingEncoding(NSUTF8StringEncoding) {
-            request.URL = NSURL(string: url)
+        if let url = url {
+            request.URL = NSURL(string: manager.urlEncode(url))
         }
         return self
     }
