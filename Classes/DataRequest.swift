@@ -70,6 +70,7 @@ public class DataRequest: HttpRequest {
         super.cancel()
         if let task = task {
             task.cancel()
+            NSNotificationCenter.defaultCenter().postNotificationName("SilkRequestEnded", object: nil)
         }
     }
     
@@ -78,11 +79,12 @@ public class DataRequest: HttpRequest {
             return false
         }
         
-        task = manager.session.dataTaskWithRequest(request as NSURLRequest)
+        task = manager.ordinarySession.dataTaskWithRequest(request as NSURLRequest)
         if let task = task {
             task.taskDescription = tag
             manager.registerRequest(self)
             task.resume()
+            NSNotificationCenter.defaultCenter().postNotificationName("SilkRequestStarted", object: nil)
             return true
         } else {
             return false

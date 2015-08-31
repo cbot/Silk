@@ -21,6 +21,7 @@ public class UploadRequest: HttpRequest {
         if let task = task {
             task.cancel()
             clearTmpFile()
+            NSNotificationCenter.defaultCenter().postNotificationName("SilkRequestEnded", object: nil)
         }
     }
     
@@ -30,11 +31,11 @@ public class UploadRequest: HttpRequest {
         }
         
         if let uploadFileUrl = uploadFileUrl, uploadFilePath = uploadFileUrl.path where NSFileManager.defaultManager().fileExistsAtPath(uploadFilePath) {
-            task = manager.session.uploadTaskWithRequest(request, fromFile: uploadFileUrl)
+            task = manager.backgroundSession.uploadTaskWithRequest(request, fromFile: uploadFileUrl)
         } else if let bodyData = request.HTTPBody {
             if let tmpFileUrl = tmpFileUrl {
                 if bodyData.writeToURL(tmpFileUrl, atomically: true) {
-                    task = manager.session.uploadTaskWithRequest(request, fromFile: tmpFileUrl)
+                    task = manager.backgroundSession.uploadTaskWithRequest(request, fromFile: tmpFileUrl)
                 } else {
                     print("[Silk] unable to write tmp upload file")
                 }
@@ -48,6 +49,7 @@ public class UploadRequest: HttpRequest {
             task.taskDescription = tag
             manager.registerRequest(self)
             task.resume()
+            NSNotificationCenter.defaultCenter().postNotificationName("SilkRequestStarted", object: nil)
             return true
         } else {
             return false
