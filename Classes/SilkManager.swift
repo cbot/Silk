@@ -117,11 +117,38 @@ public class SilkManager: NSObject, NSURLSessionDelegate, NSURLSessionTaskDelega
     }
     
     public func URLSession(session: NSURLSession, task: NSURLSessionTask, didReceiveChallenge challenge: NSURLAuthenticationChallenge, completionHandler: (NSURLSessionAuthChallengeDisposition, NSURLCredential?) -> Void) {
-        if let request = requestForTag(task.taskDescription) as? HttpRequest, credentials = request.credentials {
-            if let currentRequest = task.currentRequest where currentRequest.valueForHTTPHeaderField("Authorization") == nil {
-                completionHandler(.UseCredential, credentials)
-            } else {
-                completionHandler(.PerformDefaultHandling, nil)
+        if let request = requestForTag(task.taskDescription) as? HttpRequest {
+            if let serverTrust = challenge.protectionSpace.serverTrust where challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust {
+                if request.trustsAllCertificates {
+                    completionHandler(NSURLSessionAuthChallengeDisposition.UseCredential, NSURLCredential(forTrust: serverTrust))
+                } else if !request.trustedCertificates.isEmpty || request.publicKeyPinningRequired {
+                    guard let certificate = SecTrustGetCertificateAtIndex(serverTrust, 0) else {
+                        completionHandler(.PerformDefaultHandling, nil)
+                        return
+                    }
+                    
+                    for trustedCertificateData in request.trustedCertificates {
+                        let certificateData = SecCertificateCopyData(certificate)
+                        if trustedCertificateData.isEqualToData(certificateData) {
+                            completionHandler(NSURLSessionAuthChallengeDisposition.UseCredential, NSURLCredential(forTrust: serverTrust))
+                            return
+                        }
+                    }
+                    
+                    if request.publicKeyPinningRequired {
+                        completionHandler(.RejectProtectionSpace, nil)
+                    } else {
+                        completionHandler(.PerformDefaultHandling, nil)
+                    }
+                } else {
+                    completionHandler(.PerformDefaultHandling, nil)
+                }
+            } else if let credentials = request.credentials {
+                if let currentRequest = task.currentRequest where currentRequest.valueForHTTPHeaderField("Authorization") == nil {
+                    completionHandler(.UseCredential, credentials)
+                } else {
+                    completionHandler(.PerformDefaultHandling, nil)
+                }
             }
         } else {
             completionHandler(.PerformDefaultHandling, nil)

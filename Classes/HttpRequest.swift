@@ -6,6 +6,9 @@ public class HttpRequest: Request {
     private(set) var uploadProgressClosure: ((progress: Float, bytesSent: Int64, totalBytes: Int64) -> Void)?
     private(set) var responseData = NSMutableData()
     private(set) var credentials: NSURLCredential?
+    private(set) var trustsAllCertificates = false
+    private(set) var trustedCertificates = [NSData]()
+    private(set) var publicKeyPinningRequired = false
         
     public func url(url: NSURL?) -> Self {
         if let url = url {
@@ -164,5 +167,34 @@ public class HttpRequest: Request {
                 }
             }
         }
+    }
+    
+    /**
+    Adds a certificate to the list of trusted certificates. Use this for self signed certificates. If you want Silk to only trust certficates added using this method (certificate pinning), call the requirePublicKeyPinning method.
+    
+    - parameter certificateData: the data of the certificate to be trusted
+    */
+    public func trustCertificate(certificateData: NSData?) -> Self {
+        if let certificateData = certificateData {
+            trustedCertificates.append(certificateData)
+        }
+        return self
+    }
+    
+    /**
+    Calling this method forces Silk to only trust certificates added using the trustCertificate(certificateData:) method (certificate pininng).
+    */
+    public func requirePublicKeyPinning() -> Self {
+        publicKeyPinningRequired = true
+        return self
+    }
+    
+    /**
+    Trusts all TLS certificates. You should only use this setting during development!
+    */
+    public func trustAllCertificates() -> Self {
+        print("Silk: WARNING! certificate validation is disabled!")
+        trustsAllCertificates = true
+        return self
     }
 }
