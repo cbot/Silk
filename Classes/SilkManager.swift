@@ -143,12 +143,18 @@ public class SilkManager: NSObject, NSURLSessionDelegate, NSURLSessionTaskDelega
                 } else {
                     completionHandler(.PerformDefaultHandling, nil)
                 }
-            } else if let credentials = request.credentials {
-                if let currentRequest = task.currentRequest where currentRequest.valueForHTTPHeaderField("Authorization") == nil {
-                    completionHandler(.UseCredential, credentials)
+            } else if challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodHTTPBasic || challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodHTTPDigest {
+                if let credentials = request.credentials {
+                    if let currentRequest = task.currentRequest where currentRequest.valueForHTTPHeaderField("Authorization") == nil {
+                        completionHandler(.UseCredential, credentials)
+                    } else {
+                        completionHandler(.PerformDefaultHandling, nil)
+                    }
                 } else {
                     completionHandler(.PerformDefaultHandling, nil)
                 }
+            } else {
+                completionHandler(.PerformDefaultHandling, nil)
             }
         } else {
             completionHandler(.PerformDefaultHandling, nil)
