@@ -115,6 +115,11 @@ public class HttpRequest: Request {
         execute()
     }
     
+    public func head() {
+        method("HEAD")
+        execute()
+    }
+    
     public override func execute() -> Bool {
         if request.URL == nil {
             print("[Silk] unable to execute request - url is nil!")
