@@ -11,6 +11,9 @@ public class SilkManager: NSObject, NSURLSessionDelegate, NSURLSessionTaskDelega
     private var registeredRequests = [String: Request]()
     private var backgroundSessionCompletionHandler: (() -> Void)?
     
+    var globalCredentials = SilkGlobalCredentials()
+    var globalHeaders = SilkGlobalHeaders()
+    
     lazy var backgroundSession : NSURLSession = {
         let sessionConfig = NSURLSessionConfiguration.backgroundSessionConfigurationWithIdentifier(NSBundle.mainBundle().bundleIdentifier!)
         sessionConfig.HTTPShouldUsePipelining = true
@@ -64,6 +67,42 @@ public class SilkManager: NSObject, NSURLSessionDelegate, NSURLSessionTaskDelega
     public func cancelAllRequests() {
         for request in registeredRequests.values {
             request.cancel()
+        }
+    }
+    
+    /**
+     Sets a global HTTP header to use for all requests.
+     
+     - parameter value: the header's value. Pass nil to remove the header with the given name.
+     - parameter name:  the header's name
+     - parameter host:  if given, the header is only set for requests to the specific host
+     */
+    public func setGlobalHeaderValue(value: String?, forHeaderWithName name: String, forHost host: String? = nil) {
+        globalHeaders.setHeader(name, value: value, forHost: host)
+    }
+    
+    /**
+     Sets global HTTP auth credentials for all requests.
+     
+     - parameter credentials: the credentials to be used. Pass nil to remove credentials.
+     - parameter host:        if given, the credentials are only set for requests to the specific host
+     */
+    public func setGlobalCredentials(credentials: NSURLCredential?, forHost host: String? = nil) {
+        globalCredentials.setCredentials(credentials, forHost: host)
+    }
+    
+    /**
+     Sets global HTTP auth credentials for all requests.
+     
+     - parameter user:     the user name to be used. Pass nil to remove credentials.
+     - parameter password: the password to be used. Pass nil to remove credentials.
+     - parameter host:     if given, the credentials are only set for requests to the specific host
+     */
+    public func setGlobalCredentials(user user: String?, password: String?, forHost host: String? = nil) {
+        if let user = user, password = password {
+            globalCredentials.setCredentials(NSURLCredential(user: user, password: password, persistence: .None), forHost: host)
+        } else {
+            globalCredentials.setCredentials(nil, forHost: host)
         }
     }
     

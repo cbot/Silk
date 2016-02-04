@@ -9,10 +9,11 @@ public class HttpRequest: Request {
     private(set) var trustsAllCertificates = false
     private(set) var trustedCertificates = [NSData]()
     private(set) var publicKeyPinningRequired = false
-        
+    
     public func url(url: NSURL?) -> Self {
         if let url = url {
             request.URL = url
+            configureGlobalHeadersAndCredentials()
         }
         return self
     }
@@ -20,6 +21,7 @@ public class HttpRequest: Request {
     public func url(url: String?) -> Self {
         if let url = url {
             request.URL = NSURL(string: manager.urlEncode(url))
+            configureGlobalHeadersAndCredentials()
         }
         return self
     }
@@ -201,5 +203,13 @@ public class HttpRequest: Request {
         print("Silk: WARNING! certificate validation is disabled!")
         trustsAllCertificates = true
         return self
+    }
+    
+    // MARK: - Utility
+    private func configureGlobalHeadersAndCredentials() {
+        guard let host = request.URL?.host else { return }
+        
+        headers(manager.globalHeaders.headersForHost(host))
+        credentials(manager.globalCredentials.credentialsForHost(host))
     }
 }
