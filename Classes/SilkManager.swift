@@ -210,6 +210,8 @@ public class SilkManager: NSObject, NSURLSessionDelegate, NSURLSessionTaskDelega
     }
     
     func urlEncode(input: String) -> String {
-        return input.stringByAddingPercentEncodingWithAllowedCharacters(.URLQueryAllowedCharacterSet())!
+        let s = NSCharacterSet.URLQueryAllowedCharacterSet().mutableCopy() as! NSMutableCharacterSet
+        s.removeCharactersInString("+&")
+        return input.stringByAddingPercentEncodingWithAllowedCharacters(s) ?? ""
     }
 }

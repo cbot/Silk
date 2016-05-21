@@ -5,11 +5,10 @@ public class DataRequest: HttpRequest {
     
     // MARK: - Public Methods
     public func formUrlEncoded(data: Dictionary<String, AnyObject>) -> Self {
-        
-        
+
         let requiresMultipart = data.values.contains { $0 is SilkMultipartObject }
         if requiresMultipart {
-            var bodyData = NSMutableData()
+            let bodyData = NSMutableData()
             let boundary = "----SilkFormBoundary\(NSUUID().UUIDString)"
             request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
             
@@ -47,6 +46,7 @@ public class DataRequest: HttpRequest {
                 
                 bodyString += key + "=" + manager.urlEncode(convertedString)
             }
+            
             body(bodyString, encoding: NSASCIIStringEncoding)
         }
         
