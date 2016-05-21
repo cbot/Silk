@@ -34,7 +34,8 @@ class SilkGlobalHeaders {
     func headersForHost(host: String?) -> [String: String] {
         if let host = host {
             if let specificHeaders = specificHostHeaders[host] {
-                return specificHeaders.reduce(allHostsHeaders) { (var dict, e) in
+                return specificHeaders.reduce(allHostsHeaders) { (inputDict, e) in
+                    var dict = inputDict
                     dict[e.0] = e.1
                     return dict
                 }
@@ -70,5 +71,20 @@ class SilkGlobalCredentials {
         } else {
             return allHostsCredentials
         }
+    }
+}
+
+// MARK: - SilkMultipartObject
+public class SilkMultipartObject {
+    private(set) var data: NSData
+    private(set) var contentType: String
+    private(set) var name: String
+    private(set) var fileName: String?
+    
+    public init(data: NSData, contentType: String, name: String, fileName: String? = nil) {
+        self.data = data
+        self.contentType = contentType
+        self.name = name
+        self.fileName = fileName
     }
 }

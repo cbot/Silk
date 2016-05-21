@@ -5,36 +5,66 @@ public class DataRequest: HttpRequest {
     
     // MARK: - Public Methods
     public func formUrlEncoded(data: Dictionary<String, AnyObject>) -> Self {
-        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         
-        var bodyString = ""
-        for (key, value) in data {
-            if (bodyString.characters.count != 0) {
-                bodyString += "&"
+        
+        let requiresMultipart = data.values.contains { $0 is SilkMultipartObject }
+        if requiresMultipart {
+            var bodyData = NSMutableData()
+            let boundary = "----SilkFormBoundary\(NSUUID().UUIDString)"
+            request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+            
+            for (key, value) in data {
+                if let valueNumber = value as? NSNumber {
+                    bodyData.appendData("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(key)\"\r\n".dataUsingEncoding(NSASCIIStringEncoding) ?? NSData())
+                    bodyData.appendData("\r\n\(valueNumber.stringValue)\r\n".dataUsingEncoding(NSASCIIStringEncoding) ?? NSData())
+                } else if let valueString = value as? String {
+                    bodyData.appendData("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(key)\"\r\n".dataUsingEncoding(NSASCIIStringEncoding) ?? NSData())
+                    bodyData.appendData("\r\n\(valueString)\r\n".dataUsingEncoding(NSASCIIStringEncoding) ?? NSData())
+                } else if let valueObject = value as? SilkMultipartObject {
+                    bodyData.appendData("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(key)\"; filename=\"\(valueObject.fileName ?? "file")\"\r\nContent-Type: \(valueObject.contentType)\r\n\r\n".dataUsingEncoding(NSASCIIStringEncoding) ?? NSData())
+                    bodyData.appendData(valueObject.data)
+                    bodyData.appendData("\r\n".dataUsingEncoding(NSASCIIStringEncoding) ?? NSData())
+                }
             }
             
-            var convertedString = ""
-            if let valueNumber = value as? NSNumber {
-                convertedString = "\(valueNumber.longLongValue)"
-            } else if let valueString = value as? String {
-                convertedString = valueString
-            }
+            bodyData.appendData("--\(boundary)--\r\n".dataUsingEncoding(NSASCIIStringEncoding) ?? NSData())
+            body(bodyData)
+        } else {
+            var bodyString = ""
+            request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
             
-            bodyString += key + "=" + manager.urlEncode(convertedString)
+            for (key, value) in data {
+                if (!bodyString.isEmpty) {
+                    bodyString += "&"
+                }
+                
+                var convertedString = ""
+                if let valueNumber = value as? NSNumber {
+                    convertedString = "\(valueNumber.stringValue)"
+                } else if let valueString = value as? String {
+                    convertedString = valueString
+                }
+                
+                bodyString += key + "=" + manager.urlEncode(convertedString)
+            }
+            body(bodyString, encoding: NSASCIIStringEncoding)
         }
-        
-        body(bodyString, encoding: NSASCIIStringEncoding)
         
         return self
     }
     
     
-    public func formJson(var data: Dictionary<String, AnyObject?>) -> Self {
+    public func formJson(input: Dictionary<String, AnyObject?>) -> Self {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        var data = input
         
         for (key, value) in data {
             if value == nil {
                 data[key] = NSNull()
+            } else if value is SilkMultipartObject {
+                print("SilkMultipartObjects are not supported via formJson - skipping")
+                data.removeValueForKey(key)
             }
         }
         

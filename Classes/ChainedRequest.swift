@@ -24,14 +24,14 @@ public class ChainedRequest: CompoundRequest {
             request.completion({ [weak self] body, data, response, context in
                 if let weakSelf = self {
                     originalSuccessClosure?(body: body, data: data, response: response, request: weakSelf)
-                    weakSelf.requestIndex++
+                    weakSelf.requestIndex += 1
                     weakSelf.executeNext()
                 }
             }, error: { [weak self] error, body, data, response, context in
                 if let weakSelf = self {
                     originalErrorClosure?(error: error, body: body, data: data, response: response, request: weakSelf)
                     if weakSelf.ignoreErrors {
-                        weakSelf.requestIndex++
+                        weakSelf.requestIndex += 1
                         weakSelf.executeNext()
                     } else {
                         weakSelf.errorClosure?(error: error, body: body, data: data, response: response, request: weakSelf)
