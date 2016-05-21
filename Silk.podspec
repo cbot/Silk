@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name         = "Silk"
-  s.version      = "2.3.0"
+  s.version      = "2.3.1"
   s.summary      = "A thin layer on top of NSURLSession"
   s.homepage     = "https://github.com/cbot/Silk"
   s.license      = 'MIT'
