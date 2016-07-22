@@ -3,32 +3,34 @@ import Foundation
 public class ParallelRequest: CompoundRequest {
     private var requests = [HttpRequest]()
     
-    public override func add(request: HttpRequest) -> Self {
+    @discardableResult
+    public override func add(_ request: HttpRequest) -> Self {
         super.add(request)
         requests.append(request)
         return self
     }
     
-    private func remove(request: HttpRequest, error: NSError? = nil, body: String? = nil, data: NSData? = nil, response: NSHTTPURLResponse? = nil) {
-        if let index = requests.indexOf(request) {
-            requests.removeAtIndex(index)
+    private func remove(_ request: HttpRequest, error: NSError? = nil, body: String? = nil, data: Data? = nil, response: HTTPURLResponse? = nil) {
+        if let index = requests.index(of: request) {
+            requests.remove(at: index)
         }
         
-        if let error = error where !ignoreErrors {
+        if let error = error, !ignoreErrors {
             for request in requests {
                 request.cancel()
             }
-            errorClosure?(error: error, body: body ?? "", data: data ?? NSData(), response: response, request: self)
+            errorClosure?(error: error, body: body ?? "", data: data ?? Data(), response: response, request: self)
             manager.unregisterRequest(self)
-            requests.removeAll(keepCapacity: false)
+            requests.removeAll(keepingCapacity: false)
         } else {
             if requests.isEmpty {
-                successClosure?(body: "", data: NSData(), response: NSURLResponse(), request: self)
+                successClosure?(body: "", data: Data(), response: URLResponse(), request: self)
                 manager.unregisterRequest(self)
             }
         }
     }
     
+    @discardableResult
     public override func execute() -> Bool {
         if !super.execute() {
             return false
@@ -47,7 +49,7 @@ public class ParallelRequest: CompoundRequest {
             }, error: { [weak self] error, body, data, response, context in
                 if let weakSelf = self {
                     originalErrorClosure?(error: error, body: body, data: data, response: response, request: weakSelf)
-                    weakSelf.remove(request, error: error, body: body, data:data, response: response as? NSHTTPURLResponse)
+                    weakSelf.remove(request, error: error, body: body, data:data, response: response as? HTTPURLResponse)
                 }
             })
             
@@ -64,7 +66,7 @@ public class ParallelRequest: CompoundRequest {
         for request in requests {
             request.cancel()
         }
-        requests.removeAll(keepCapacity: false)
+        requests.removeAll(keepingCapacity: false)
         super.cancel()
     }
 }

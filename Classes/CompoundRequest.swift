@@ -3,11 +3,13 @@ import Foundation
 public class CompoundRequest: Request {
     private(set) var ignoreErrors = false
 
-    public func add(request: HttpRequest) -> Self {
+    @discardableResult
+    public func add(_ request: HttpRequest) -> Self {
         // empty implementation, for subclasses to override
         return self
     }
     
+    @discardableResult
     public func allowErrors() -> Self {
         ignoreErrors = true
         return self

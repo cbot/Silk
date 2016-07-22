@@ -1,6 +1,6 @@
 import Foundation
 
-public class SilkManager: NSObject, NSURLSessionDelegate, NSURLSessionTaskDelegate, NSURLSessionDataDelegate {
+public class SilkManager: NSObject, URLSessionDelegate, URLSessionTaskDelegate, URLSessionDataDelegate {
     public class var sharedInstance: SilkManager {
         struct Singleton {
             static let instance = SilkManager()
@@ -14,20 +14,20 @@ public class SilkManager: NSObject, NSURLSessionDelegate, NSURLSessionTaskDelega
     var globalCredentials = SilkGlobalCredentials()
     var globalHeaders = SilkGlobalHeaders()
     
-    lazy var backgroundSession : NSURLSession = {
-        let sessionConfig = NSURLSessionConfiguration.backgroundSessionConfigurationWithIdentifier(NSBundle.mainBundle().bundleIdentifier!)
-        sessionConfig.HTTPShouldUsePipelining = true
-        sessionConfig.URLCache = NSURLCache.sharedURLCache()
-        sessionConfig.URLCredentialStorage = NSURLCredentialStorage.sharedCredentialStorage()
-        return NSURLSession(configuration: sessionConfig, delegate: self, delegateQueue: NSOperationQueue.mainQueue())
+    lazy var backgroundSession : Foundation.URLSession = {
+        let sessionConfig = URLSessionConfiguration.background(withIdentifier: Bundle.main.bundleIdentifier!)
+        sessionConfig.httpShouldUsePipelining = true
+        sessionConfig.urlCache = URLCache.shared
+        sessionConfig.urlCredentialStorage = URLCredentialStorage.shared
+        return Foundation.URLSession(configuration: sessionConfig, delegate: self, delegateQueue: OperationQueue.main)
     }()
     
-    lazy var ordinarySession : NSURLSession = {
-        let sessionConfig = NSURLSessionConfiguration.defaultSessionConfiguration()
-        sessionConfig.HTTPShouldUsePipelining = true
-        sessionConfig.URLCache = NSURLCache.sharedURLCache()
-        sessionConfig.URLCredentialStorage = NSURLCredentialStorage.sharedCredentialStorage()
-        return NSURLSession(configuration: sessionConfig, delegate: self, delegateQueue: NSOperationQueue.mainQueue())
+    lazy var ordinarySession : Foundation.URLSession = {
+        let sessionConfig = URLSessionConfiguration.default
+        sessionConfig.httpShouldUsePipelining = true
+        sessionConfig.urlCache = URLCache.shared
+        sessionConfig.urlCredentialStorage = URLCredentialStorage.shared
+        return Foundation.URLSession(configuration: sessionConfig, delegate: self, delegateQueue: OperationQueue.main)
     }()
     
     // MARK: - Public Methods
@@ -48,17 +48,17 @@ public class SilkManager: NSObject, NSURLSessionDelegate, NSURLSessionTaskDelega
     }
         
     // MARK: -
-    public func cancelRequest(request: HttpRequest?) {
+    public func cancelRequest(_ request: HttpRequest?) {
         request?.cancel()
     }
     
-    public func cancelRequest(tag: String) {
+    public func cancelRequest(_ tag: String) {
         if let request = requestForTag(tag) {
             request.cancel()
         }
     }
     
-    public func cancelRequestsInGroup(group: String) {
+    public func cancelRequestsInGroup(_ group: String) {
         for request in (registeredRequests.values.filter {request in request.group == group}) {
             request.cancel()
         }
@@ -77,7 +77,7 @@ public class SilkManager: NSObject, NSURLSessionDelegate, NSURLSessionTaskDelega
      - parameter name:  the header's name
      - parameter host:  if given, the header is only set for requests to the specific host
      */
-    public func setGlobalHeaderValue(value: String?, forHeaderWithName name: String, forHost host: String? = nil) {
+    public func setGlobalHeaderValue(_ value: String?, forHeaderWithName name: String, forHost host: String? = nil) {
         globalHeaders.setHeader(name, value: value, forHost: host)
     }
     
@@ -87,7 +87,7 @@ public class SilkManager: NSObject, NSURLSessionDelegate, NSURLSessionTaskDelega
      - parameter credentials: the credentials to be used. Pass nil to remove credentials.
      - parameter host:        if given, the credentials are only set for requests to the specific host
      */
-    public func setGlobalCredentials(credentials: NSURLCredential?, forHost host: String? = nil) {
+    public func setGlobalCredentials(_ credentials: URLCredential?, forHost host: String? = nil) {
         globalCredentials.setCredentials(credentials, forHost: host)
     }
     
@@ -98,110 +98,110 @@ public class SilkManager: NSObject, NSURLSessionDelegate, NSURLSessionTaskDelega
      - parameter password: the password to be used. Pass nil to remove credentials.
      - parameter host:     if given, the credentials are only set for requests to the specific host
      */
-    public func setGlobalCredentials(user user: String?, password: String?, forHost host: String? = nil) {
-        if let user = user, password = password {
-            globalCredentials.setCredentials(NSURLCredential(user: user, password: password, persistence: .None), forHost: host)
+    public func setGlobalCredentials(user: String?, password: String?, forHost host: String? = nil) {
+        if let user = user, let password = password {
+            globalCredentials.setCredentials(URLCredential(user: user, password: password, persistence: .none), forHost: host)
         } else {
             globalCredentials.setCredentials(nil, forHost: host)
         }
     }
     
     // MARK: - Background Sessions
-    public func setBackgroundSessionCompletionHandler(completionHandler: () -> Void, sessionIdentifier: String) {
+    public func setBackgroundSessionCompletionHandler(_ completionHandler: () -> Void, sessionIdentifier: String) {
         if backgroundSession.configuration.identifier == sessionIdentifier {
             backgroundSessionCompletionHandler = completionHandler
         }
     }
     
     // MARK: - Request tracking
-    func registerRequest(request: Request) {
+    func registerRequest(_ request: Request) {
         registeredRequests[request.tag] = request
     }
     
-    func unregisterRequest(request: Request) {
+    func unregisterRequest(_ request: Request) {
         registeredRequests[request.tag] = nil
     }
     
     // MARK: - NSURLSessionDelegate
-    public func URLSessionDidFinishEventsForBackgroundURLSession(session: NSURLSession) {
+    public func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {
         backgroundSessionCompletionHandler?()
         backgroundSessionCompletionHandler = nil
     }
     
     // MARK: - NSURLSessionDataDelegate
-    public func URLSession(session: NSURLSession, dataTask: NSURLSessionDataTask, didReceiveData data: NSData) {
+    public func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
         if let request = requestForTag(dataTask.taskDescription) {
             request.appendResponseData(data, task: dataTask)
         }
     }
     
     // MARK: - NSURLSessionTaskDelegate
-    public func URLSession(session: NSURLSession, task: NSURLSessionTask, didCompleteWithError error: NSError?) {
-        NSNotificationCenter.defaultCenter().postNotificationName("SilkRequestEnded", object: nil)
+    public func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: NSError?) {
+        NotificationCenter.default.post(name: Notification.Name(rawValue: "SilkRequestEnded"), object: nil)
         
         // only connection errors are handled here!
         if let request = requestForTag(task.taskDescription) {
-            let response = task.response as? NSHTTPURLResponse ?? NSHTTPURLResponse()
+            let response = task.response as? HTTPURLResponse ?? HTTPURLResponse()
             request.handleResponse(response, error: error, task: task)
         }
     }
     
-    public func URLSession(session: NSURLSession, task: NSURLSessionTask, didSendBodyData bytesSent: Int64, totalBytesSent: Int64, totalBytesExpectedToSend: Int64) {
-        if let request = requestForTag(task.taskDescription) as? HttpRequest, uploadProgressClosure = request.uploadProgressClosure {
+    public func urlSession(_ session: URLSession, task: URLSessionTask, didSendBodyData bytesSent: Int64, totalBytesSent: Int64, totalBytesExpectedToSend: Int64) {
+        if let request = requestForTag(task.taskDescription) as? HttpRequest, let uploadProgressClosure = request.uploadProgressClosure {
             let progress = Float(totalBytesSent) / Float(totalBytesExpectedToSend)
-            dispatch_async(dispatch_get_main_queue()) {
+            DispatchQueue.main.async {
                 uploadProgressClosure(progress: progress, bytesSent: totalBytesSent, totalBytes: totalBytesExpectedToSend)
             }
         }
     }
     
-    public func URLSession(session: NSURLSession, task: NSURLSessionTask, didReceiveChallenge challenge: NSURLAuthenticationChallenge, completionHandler: (NSURLSessionAuthChallengeDisposition, NSURLCredential?) -> Void) {
+    public func urlSession(_ session: URLSession, task: URLSessionTask, didReceive challenge: URLAuthenticationChallenge, completionHandler: (Foundation.URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
         if let request = requestForTag(task.taskDescription) as? HttpRequest {
-            if let serverTrust = challenge.protectionSpace.serverTrust where challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust {
+            if let serverTrust = challenge.protectionSpace.serverTrust, challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust {
                 if request.trustsAllCertificates {
-                    completionHandler(NSURLSessionAuthChallengeDisposition.UseCredential, NSURLCredential(forTrust: serverTrust))
+                    completionHandler(Foundation.URLSession.AuthChallengeDisposition.useCredential, URLCredential(trust: serverTrust))
                 } else if !request.trustedCertificates.isEmpty || request.publicKeyPinningRequired {
                     guard let certificate = SecTrustGetCertificateAtIndex(serverTrust, 0) else {
-                        completionHandler(.PerformDefaultHandling, nil)
+                        completionHandler(.performDefaultHandling, nil)
                         return
                     }
                     
                     for trustedCertificateData in request.trustedCertificates {
                         let certificateData = SecCertificateCopyData(certificate)
-                        if trustedCertificateData.isEqualToData(certificateData) {
-                            completionHandler(NSURLSessionAuthChallengeDisposition.UseCredential, NSURLCredential(forTrust: serverTrust))
+                        if trustedCertificateData == certificateData as Data {
+                            completionHandler(Foundation.URLSession.AuthChallengeDisposition.useCredential, URLCredential(trust: serverTrust))
                             return
                         }
                     }
                     
                     if request.publicKeyPinningRequired {
-                        completionHandler(.RejectProtectionSpace, nil)
+                        completionHandler(.rejectProtectionSpace, nil)
                     } else {
-                        completionHandler(.PerformDefaultHandling, nil)
+                        completionHandler(.performDefaultHandling, nil)
                     }
                 } else {
-                    completionHandler(.PerformDefaultHandling, nil)
+                    completionHandler(.performDefaultHandling, nil)
                 }
             } else if challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodHTTPBasic || challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodHTTPDigest {
                 if let credentials = request.credentials {
-                    if let currentRequest = task.currentRequest where currentRequest.valueForHTTPHeaderField("Authorization") == nil {
-                        completionHandler(.UseCredential, credentials)
+                    if let currentRequest = task.currentRequest, currentRequest.value(forHTTPHeaderField: "Authorization") == nil {
+                        completionHandler(.useCredential, credentials)
                     } else {
-                        completionHandler(.PerformDefaultHandling, nil)
+                        completionHandler(.performDefaultHandling, nil)
                     }
                 } else {
-                    completionHandler(.PerformDefaultHandling, nil)
+                    completionHandler(.performDefaultHandling, nil)
                 }
             } else {
-                completionHandler(.PerformDefaultHandling, nil)
+                completionHandler(.performDefaultHandling, nil)
             }
         } else {
-            completionHandler(.PerformDefaultHandling, nil)
+            completionHandler(.performDefaultHandling, nil)
         }
     }
     
     // MARK: - Utility
-    private func requestForTag(tag: String?) -> Request? {
+    private func requestForTag(_ tag: String?) -> Request? {
         if let tag = tag {
             return registeredRequests[tag]
         } else {
@@ -209,9 +209,9 @@ public class SilkManager: NSObject, NSURLSessionDelegate, NSURLSessionTaskDelega
         }
     }
     
-    func urlEncode(input: String) -> String {
-        let s = NSCharacterSet.URLQueryAllowedCharacterSet().mutableCopy() as! NSMutableCharacterSet
-        s.removeCharactersInString("+&")
-        return input.stringByAddingPercentEncodingWithAllowedCharacters(s) ?? ""
+    func urlEncode(_ input: String) -> String {
+        var s = CharacterSet.urlQueryAllowed
+        s.remove(charactersIn: "+&")
+        return input.addingPercentEncoding(withAllowedCharacters: s) ?? ""
     }
 }

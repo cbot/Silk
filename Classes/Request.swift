@@ -1,17 +1,17 @@
 import Foundation
 
 public class Request: Equatable {
-    public typealias SuccessClosure = ((body: String, data: NSData, response: NSURLResponse, request: Request)->())?
-    public typealias ErrorClosure = ((error: NSError, body: String, data: NSData, response: NSURLResponse?, request: Request)->())?
+    public typealias SuccessClosure = ((body: String, data: Data, response: URLResponse, request: Request)->())?
+    public typealias ErrorClosure = ((error: NSError, body: String, data: Data, response: URLResponse?, request: Request)->())?
     
     var manager: SilkManager
     internal(set) var successClosure: SuccessClosure
     internal(set) var errorClosure: ErrorClosure
-    private(set) var tag: String = NSUUID().UUIDString
+    private(set) var tag: String = UUID().uuidString
     private(set) var group = "Requests"
     public var compoundContext = [String: AnyObject]()
     
-    func context(context: [String: AnyObject]) -> Self {
+    func context(_ context: [String: AnyObject]) -> Self {
         compoundContext = context
         return self
     }
@@ -20,22 +20,26 @@ public class Request: Equatable {
         self.manager = manager
     }
     
-    public func tag(requestTag: String) -> Self {
+    @discardableResult
+    public func tag(_ requestTag: String) -> Self {
         tag = requestTag
         return self
     }
     
-    public func group(requestGroup: String) -> Self {
+    @discardableResult
+    public func group(_ requestGroup: String) -> Self {
         group = requestGroup
         return self
     }
     
-    public func completion(success: SuccessClosure, error: ErrorClosure) -> Self {
+    @discardableResult
+    public func completion(_ success: SuccessClosure, error: ErrorClosure) -> Self {
         successClosure = success
         errorClosure = error
         return self
     }
     
+    @discardableResult
     public func execute() -> Bool {
         // empty implementation, for subclasses to override
         return true
@@ -46,11 +50,11 @@ public class Request: Equatable {
         // empty implementation, for subclasses to override
     }
     
-    func appendResponseData(data: NSData, task: NSURLSessionTask) {
+    func appendResponseData(_ data: Data, task: URLSessionTask) {
         // empty implementation, for subclasses to override
     }
     
-    func handleResponse(response: NSHTTPURLResponse, error: NSError?, task: NSURLSessionTask) {
+    func handleResponse(_ response: HTTPURLResponse, error: NSError?, task: URLSessionTask) {
         // empty implementation, for subclasses to override
     }
 }

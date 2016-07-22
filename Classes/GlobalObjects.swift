@@ -13,7 +13,7 @@ class SilkGlobalHeaders {
     private var allHostsHeaders = [String: String]()
     private var specificHostHeaders = [String: [String: String]]()
     
-    func setHeader(name: String, value: String?, forHost host: String?) {
+    func setHeader(_ name: String, value: String?, forHost host: String?) {
         if let host = host {
             var headers = specificHostHeaders[host] ?? [String: String]()
             headers[name] = value
@@ -23,7 +23,7 @@ class SilkGlobalHeaders {
         }
     }
     
-    func setHeaders(headers: [String: String], forHost host: String?) {
+    func setHeaders(_ headers: [String: String], forHost host: String?) {
         if let host = host {
             specificHostHeaders[host] = headers
         } else {
@@ -31,7 +31,7 @@ class SilkGlobalHeaders {
         }
     }
     
-    func headersForHost(host: String?) -> [String: String] {
+    func headersForHost(_ host: String?) -> [String: String] {
         if let host = host {
             if let specificHeaders = specificHostHeaders[host] {
                 return specificHeaders.reduce(allHostsHeaders) { (inputDict, e) in
@@ -50,10 +50,10 @@ class SilkGlobalHeaders {
 
 // MARK: - SilkGlobalCredentials
 class SilkGlobalCredentials {
-    private var allHostsCredentials: NSURLCredential?
-    private var specificHostCredentials = [String: NSURLCredential]()
+    private var allHostsCredentials: URLCredential?
+    private var specificHostCredentials = [String: URLCredential]()
     
-    func setCredentials(credentials: NSURLCredential?, forHost host: String?) {
+    func setCredentials(_ credentials: URLCredential?, forHost host: String?) {
         if let host = host {
             specificHostCredentials[host] = credentials
         } else {
@@ -61,7 +61,7 @@ class SilkGlobalCredentials {
         }
     }
     
-    func credentialsForHost(host: String?) -> NSURLCredential? {
+    func credentialsForHost(_ host: String?) -> URLCredential? {
         if let host = host {
             if let specificCredentials = specificHostCredentials[host] {
                 return specificCredentials
@@ -76,12 +76,12 @@ class SilkGlobalCredentials {
 
 // MARK: - SilkMultipartObject
 public class SilkMultipartObject {
-    private(set) var data: NSData
+    private(set) var data: Data
     private(set) var contentType: String
     private(set) var name: String
     private(set) var fileName: String?
     
-    public init(data: NSData, contentType: String, name: String, fileName: String? = nil) {
+    public init(data: Data, contentType: String, name: String, fileName: String? = nil) {
         self.data = data
         self.contentType = contentType
         self.name = name

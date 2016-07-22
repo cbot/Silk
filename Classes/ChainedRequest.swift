@@ -4,13 +4,15 @@ public class ChainedRequest: CompoundRequest {
     private var requests = [HttpRequest]()
     private var requestIndex = 0
     
-    public override func add(request: HttpRequest) -> Self {
+    @discardableResult
+    public override func add(_ request: HttpRequest) -> Self {
         super.add(request)
         requests.append(request)
         return self
     }
     
-    public func then(request: HttpRequest) -> Self {
+    @discardableResult
+    public func then(_ request: HttpRequest) -> Self {
         super.add(request)
         return self
     }
@@ -36,16 +38,17 @@ public class ChainedRequest: CompoundRequest {
                     } else {
                         weakSelf.errorClosure?(error: error, body: body, data: data, response: response, request: weakSelf)
                         weakSelf.manager.unregisterRequest(weakSelf)
-                        weakSelf.requests.removeAll(keepCapacity: false)
+                        weakSelf.requests.removeAll(keepingCapacity: false)
                     }
                 }
             }).execute()
         } else {
-            successClosure?(body: "", data: NSData(), response: NSURLResponse(), request: self)
+            successClosure?(body: "", data: Data(), response: URLResponse(), request: self)
             manager.unregisterRequest(self)
         }
     }
     
+    @discardableResult
     public override func execute() -> Bool {
         if !super.execute() {
             return false

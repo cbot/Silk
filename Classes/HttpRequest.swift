@@ -4,36 +4,39 @@ public class HttpRequest: Request {
     let request = NSMutableURLRequest()
     
     private(set) var uploadProgressClosure: ((progress: Float, bytesSent: Int64, totalBytes: Int64) -> Void)?
-    private(set) var responseData = NSMutableData()
-    private(set) var credentials: NSURLCredential?
+    private(set) var responseData = Data()
+    private(set) var credentials: URLCredential?
     private(set) var trustsAllCertificates = false
-    private(set) var trustedCertificates = [NSData]()
+    private(set) var trustedCertificates = [Data]()
     private(set) var publicKeyPinningRequired = false
     
-    public func url(url: NSURL?) -> Self {
+    @discardableResult
+    public func url(_ url: URL?) -> Self {
         if let url = url {
-            request.URL = url
+            request.url = url
             configureGlobalHeadersAndCredentials()
         }
         return self
     }
     
-    public func url(url: String?) -> Self {
+    @discardableResult
+    public func url(_ url: String?) -> Self {
         if let url = url {
-            request.URL = NSURL(string: manager.urlEncode(url))
+            request.url = URL(string: manager.urlEncode(url))
             configureGlobalHeadersAndCredentials()
         }
         return self
     }
     
-    public func credentials(credentials: NSURLCredential?, sendPrecautionary: Bool = true) -> Self {
+    @discardableResult
+    public func credentials(_ credentials: URLCredential?, sendPrecautionary: Bool = true) -> Self {
         self.credentials = credentials
         
         if sendPrecautionary {
-            if let credentials = credentials, user = credentials.user, password = credentials.password {
+            if let credentials = credentials, let user = credentials.user, let password = credentials.password {
                 let userPasswordString = "\(user):\(password)"
-                let userPasswordData = userPasswordString.dataUsingEncoding(NSUTF8StringEncoding)
-                let base64EncodedCredential = userPasswordData!.base64EncodedStringWithOptions([])
+                let userPasswordData = userPasswordString.data(using: String.Encoding.utf8)
+                let base64EncodedCredential = userPasswordData!.base64EncodedString(options: [])
                 let authString = "Basic \(base64EncodedCredential)"
                 request.setValue(authString, forHTTPHeaderField: "Authorization")
             }
@@ -42,53 +45,62 @@ public class HttpRequest: Request {
         return self
     }
     
+    @discardableResult
     public func uploadProgress(progressClosure progress: ((progress: Float, bytesSent: Int64, totalBytes: Int64) -> Void)?) -> Self {
         uploadProgressClosure = progress
         return self
     }
     
-    public func timeout(interval: NSTimeInterval) -> Self {
+    @discardableResult
+    public func timeout(_ interval: TimeInterval) -> Self {
         request.timeoutInterval = interval
         return self
     }
     
-    public func cachePolicy(policy: NSURLRequestCachePolicy) -> Self {
+    @discardableResult
+    public func cachePolicy(_ policy: NSURLRequest.CachePolicy) -> Self {
         request.cachePolicy = policy
         return self
     }
     
-    public func body(body: NSData) -> Self {
-        request.HTTPBody = body
+    @discardableResult
+    public func body(_ body: Data) -> Self {
+        request.httpBody = body
         return self
     }
     
-    public func body(body: String, encoding: NSStringEncoding) -> Self {
-        if let bodyData = body.dataUsingEncoding(encoding, allowLossyConversion: false) {
-            request.HTTPBody = bodyData
+    @discardableResult
+    public func body(_ body: String, encoding: String.Encoding) -> Self {
+        if let bodyData = body.data(using: encoding, allowLossyConversion: false) {
+            request.httpBody = bodyData
         } else {
             print("[Silk] unable to encode body data")
         }
         return self
     }
     
-    public func method(method: String) -> Self {
-        request.HTTPMethod = method
+    @discardableResult
+    public func method(_ method: String) -> Self {
+        request.httpMethod = method
         return self
     }
     
-    public func header(headerName: String, value: String) -> Self {
+    @discardableResult
+    public func header(_ headerName: String, value: String) -> Self {
         request.setValue(value, forHTTPHeaderField: headerName)
         return self
     }
     
-    public func headers(headers: [String: String]) -> Self {
+    @discardableResult
+    public func headers(_ headers: [String: String]) -> Self {
         for (headerName, value) in headers {
             request.setValue(value, forHTTPHeaderField: headerName)
         }
         return self
     }
     
-    public func contentType(type: String) -> Self {
+    @discardableResult
+    public func contentType(_ type: String) -> Self {
         return header("Content-Type", value: type)
     }
     
@@ -122,8 +134,9 @@ public class HttpRequest: Request {
         execute()
     }
     
+    @discardableResult
     public override func execute() -> Bool {
-        if request.URL == nil {
+        if request.url == nil {
             print("[Silk] unable to execute request - url is nil!")
             return false
         }
@@ -131,30 +144,30 @@ public class HttpRequest: Request {
         return super.execute()
     }
     
-    override func appendResponseData(data: NSData, task: NSURLSessionTask) {
-        responseData.appendData(data)
+    override func appendResponseData(_ data: Data, task: URLSessionTask) {
+        responseData.append(data)
     }
     
-    override func handleResponse(response: NSHTTPURLResponse, error: NSError?, task: NSURLSessionTask) {
+    override func handleResponse(_ response: HTTPURLResponse, error: NSError?, task: URLSessionTask) {
         manager.unregisterRequest(self)
         
-        if let error = error where error.code == -999 { // cancelled request
+        if let error = error, error.code == -999 { // cancelled request
             return
         }
         
-        var stringEncoding : NSStringEncoding = NSUTF8StringEncoding // default
+        var stringEncoding: String.Encoding = String.Encoding.utf8 // default
         if let encodingName = response.textEncodingName {
             if encodingName.characters.count > 0 {
                 let encoding = CFStringConvertIANACharSetNameToEncoding(encodingName)
-                stringEncoding = CFStringConvertEncodingToNSStringEncoding(encoding)
+                stringEncoding = String.Encoding(rawValue: CFStringConvertEncodingToNSStringEncoding(encoding))
             }
         }
         
-        let body = NSString(data: responseData, encoding: stringEncoding)
+        let body = NSString(data: responseData as Data, encoding: stringEncoding.rawValue)
         
         if let error = error {
             if let errorClosure = errorClosure {
-                dispatch_async(dispatch_get_main_queue()) {
+                DispatchQueue.main.async {
                     errorClosure(error: error, body: (body as? String ?? ""), data: self.responseData, response: response, request: self)
                 }
             }
@@ -162,13 +175,13 @@ public class HttpRequest: Request {
             if response.statusCode < 200 || response.statusCode >= 300 {
                 if let errorClosure = self.errorClosure {
                     let customError = NSError(domain: "Silk", code: response.statusCode, userInfo: [NSLocalizedDescriptionKey: "Status Code \(response.statusCode)"])
-                    dispatch_async(dispatch_get_main_queue()) {
+                    DispatchQueue.main.async {
                         errorClosure(error: customError, body: (body as? String ?? ""), data: self.responseData, response: response, request: self)
                     }
                 }
             } else {
                 if let successClosure = self.successClosure {
-                    dispatch_async(dispatch_get_main_queue()) {
+                    DispatchQueue.main.async {
                         successClosure(body: (body as? String ?? ""), data: self.responseData, response: response, request: self)
                     }
                 }
@@ -181,7 +194,8 @@ public class HttpRequest: Request {
     
     - parameter certificateData: the data of the certificate to be trusted
     */
-    public func trustCertificate(certificateData: NSData?) -> Self {
+    @discardableResult
+    public func trustCertificate(_ certificateData: Data?) -> Self {
         if let certificateData = certificateData {
             trustedCertificates.append(certificateData)
         }
@@ -191,6 +205,7 @@ public class HttpRequest: Request {
     /**
     Calling this method forces Silk to only trust certificates added using the trustCertificate(certificateData:) method (certificate pininng).
     */
+    @discardableResult
     public func requirePublicKeyPinning() -> Self {
         publicKeyPinningRequired = true
         return self
@@ -199,6 +214,7 @@ public class HttpRequest: Request {
     /**
     Trusts all TLS certificates. You should only use this setting during development!
     */
+    @discardableResult
     public func trustAllCertificates() -> Self {
         print("Silk: WARNING! certificate validation is disabled!")
         trustsAllCertificates = true
@@ -207,7 +223,7 @@ public class HttpRequest: Request {
     
     // MARK: - Utility
     private func configureGlobalHeadersAndCredentials() {
-        guard let host = request.URL?.host else { return }
+        guard let host = request.url?.host else { return }
         
         headers(manager.globalHeaders.headersForHost(host))
         credentials(manager.globalCredentials.credentialsForHost(host))

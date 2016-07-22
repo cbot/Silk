@@ -1,33 +1,33 @@
 import Foundation
 
 public class DataRequest: HttpRequest {
-    private var task: NSURLSessionDataTask?
+    private var task: URLSessionDataTask?
     
     // MARK: - Public Methods
-    public func formUrlEncoded(data: Dictionary<String, AnyObject>) -> Self {
-
+    @discardableResult
+    public func formUrlEncoded(_ data: Dictionary<String, AnyObject>) -> Self {
         let requiresMultipart = data.values.contains { $0 is SilkMultipartObject }
         if requiresMultipart {
-            let bodyData = NSMutableData()
-            let boundary = "----SilkFormBoundary\(NSUUID().UUIDString)"
+            var bodyData = Data()
+            let boundary = "----SilkFormBoundary\(UUID().uuidString)"
             request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
             
             for (key, value) in data {
                 if let valueNumber = value as? NSNumber {
-                    bodyData.appendData("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(key)\"\r\n".dataUsingEncoding(NSASCIIStringEncoding) ?? NSData())
-                    bodyData.appendData("\r\n\(valueNumber.stringValue)\r\n".dataUsingEncoding(NSASCIIStringEncoding) ?? NSData())
+                    bodyData.append("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(key)\"\r\n".data(using: String.Encoding.ascii) ?? Data())
+                    bodyData.append("\r\n\(valueNumber.stringValue)\r\n".data(using: String.Encoding.ascii) ?? Data())
                 } else if let valueString = value as? String {
-                    bodyData.appendData("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(key)\"\r\n".dataUsingEncoding(NSASCIIStringEncoding) ?? NSData())
-                    bodyData.appendData("\r\n\(valueString)\r\n".dataUsingEncoding(NSASCIIStringEncoding) ?? NSData())
+                    bodyData.append("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(key)\"\r\n".data(using: String.Encoding.ascii) ?? Data())
+                    bodyData.append("\r\n\(valueString)\r\n".data(using: String.Encoding.ascii) ?? Data())
                 } else if let valueObject = value as? SilkMultipartObject {
-                    bodyData.appendData("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(key)\"; filename=\"\(valueObject.fileName ?? "file")\"\r\nContent-Type: \(valueObject.contentType)\r\n\r\n".dataUsingEncoding(NSASCIIStringEncoding) ?? NSData())
-                    bodyData.appendData(valueObject.data)
-                    bodyData.appendData("\r\n".dataUsingEncoding(NSASCIIStringEncoding) ?? NSData())
+                    bodyData.append("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(key)\"; filename=\"\(valueObject.fileName ?? "file")\"\r\nContent-Type: \(valueObject.contentType)\r\n\r\n".data(using: String.Encoding.ascii) ?? Data())
+                    bodyData.append(valueObject.data as Data)
+                    bodyData.append("\r\n".data(using: String.Encoding.ascii) ?? Data())
                 }
             }
             
-            bodyData.appendData("--\(boundary)--\r\n".dataUsingEncoding(NSASCIIStringEncoding) ?? NSData())
-            body(bodyData)
+            bodyData.append("--\(boundary)--\r\n".data(using: String.Encoding.ascii) ?? Data())
+            body(bodyData as Data)
         } else {
             var bodyString = ""
             request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
@@ -47,14 +47,14 @@ public class DataRequest: HttpRequest {
                 bodyString += key + "=" + manager.urlEncode(convertedString)
             }
             
-            body(bodyString, encoding: NSASCIIStringEncoding)
+            body(bodyString, encoding: String.Encoding.ascii)
         }
         
         return self
     }
     
-    
-    public func formJson(input: Dictionary<String, AnyObject?>) -> Self {
+    @discardableResult
+    public func formJson(_ input: Dictionary<String, AnyObject?>) -> Self {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
         var data = input
@@ -64,13 +64,13 @@ public class DataRequest: HttpRequest {
                 data[key] = NSNull()
             } else if value is SilkMultipartObject {
                 print("SilkMultipartObjects are not supported via formJson - skipping")
-                data.removeValueForKey(key)
+                data.removeValue(forKey: key)
             }
         }
         
         if let data = data as? Dictionary<String, AnyObject> {
             do {
-                let bodyData = try NSJSONSerialization.dataWithJSONObject(data, options: [])
+                let bodyData = try JSONSerialization.data(withJSONObject: data, options: [])
                 body(bodyData)
             } catch {
                 print("[Silk] unable to encode body data")
@@ -82,11 +82,12 @@ public class DataRequest: HttpRequest {
         return self
     }
     
-    public func formJson(data: Array<AnyObject>) -> Self {
+    @discardableResult
+    public func formJson(_ data: Array<AnyObject>) -> Self {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
         do {
-            let data = try NSJSONSerialization.dataWithJSONObject(data, options: [])
+            let data = try JSONSerialization.data(withJSONObject: data, options: [])
             body(data)
         } catch {
             print("[Silk] unable to encode body data")
@@ -100,21 +101,22 @@ public class DataRequest: HttpRequest {
         super.cancel()
         if let task = task {
             task.cancel()
-            NSNotificationCenter.defaultCenter().postNotificationName("SilkRequestEnded", object: nil)
+            NotificationCenter.default.post(name: Notification.Name(rawValue: "SilkRequestEnded"), object: nil)
         }
     }
     
+    @discardableResult
     public override func execute() -> Bool {
         if !(super.execute()) {
             return false
         }
         
-        task = manager.ordinarySession.dataTaskWithRequest(request as NSURLRequest)
+        task = manager.ordinarySession.dataTask(with: request as URLRequest)
         if let task = task {
             task.taskDescription = tag
             manager.registerRequest(self)
             task.resume()
-            NSNotificationCenter.defaultCenter().postNotificationName("SilkRequestStarted", object: nil)
+            NotificationCenter.default.post(name: Notification.Name(rawValue: "SilkRequestStarted"), object: nil)
             return true
         } else {
             return false
