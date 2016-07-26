@@ -22,7 +22,7 @@ public class HttpRequest: Request {
     @discardableResult
     public func url(_ url: String?) -> Self {
         if let url = url {
-            request.url = URL(string: manager.urlEncode(url))
+            request.url = URL(string: url)
             configureGlobalHeadersAndCredentials()
         }
         return self
