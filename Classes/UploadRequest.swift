@@ -5,7 +5,7 @@ public class UploadRequest: HttpRequest {
     private var uploadFileUrl: URL?
     private var tmpFileUrl: URL? {
         get {
-            return try! URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("upload-\(tag)")
+            return URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("upload-\(tag)")
         }
     }
 
@@ -30,7 +30,7 @@ public class UploadRequest: HttpRequest {
             return false
         }
         
-        if let uploadFileUrl = uploadFileUrl, let path = uploadFileUrl.path, FileManager.default.fileExists(atPath: path) {
+        if let uploadFileUrl = uploadFileUrl, FileManager.default.fileExists(atPath: uploadFileUrl.path) {
             task = manager.backgroundSession.uploadTask(with: request as URLRequest, fromFile: uploadFileUrl)
         } else if let bodyData = request.httpBody {
             if let tmpFileUrl = tmpFileUrl {
@@ -63,7 +63,7 @@ public class UploadRequest: HttpRequest {
     
     // MARK: - Private Methods
     private func clearTmpFile() {
-        if let tmpFileUrl = tmpFileUrl, let tmpFilePath = tmpFileUrl.path, FileManager.default.fileExists(atPath: tmpFilePath) {
+        if let tmpFileUrl = tmpFileUrl, FileManager.default.fileExists(atPath: tmpFileUrl.path) {
             do {
                 try FileManager.default.removeItem(at: tmpFileUrl)
             } catch {}

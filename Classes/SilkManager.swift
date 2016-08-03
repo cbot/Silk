@@ -135,8 +135,8 @@ public class SilkManager: NSObject, URLSessionDelegate, URLSessionTaskDelegate, 
         }
     }
     
-    // MARK: - NSURLSessionTaskDelegate
-    public func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: NSError?) {
+    // MARK: - NSURLSessionTaskDelegate    
+    public func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         NotificationCenter.default.post(name: Notification.Name(rawValue: "SilkRequestEnded"), object: nil)
         
         // only connection errors are handled here!
