@@ -14,7 +14,7 @@ public class SilkManager: NSObject, URLSessionDelegate, URLSessionTaskDelegate, 
     var globalCredentials = SilkGlobalCredentials()
     var globalHeaders = SilkGlobalHeaders()
     
-    lazy var backgroundSession : Foundation.URLSession = {
+    lazy var backgroundSession : URLSession = {
         let sessionConfig = URLSessionConfiguration.background(withIdentifier: Bundle.main.bundleIdentifier!)
         sessionConfig.httpShouldUsePipelining = true
         sessionConfig.urlCache = URLCache.shared
@@ -22,7 +22,7 @@ public class SilkManager: NSObject, URLSessionDelegate, URLSessionTaskDelegate, 
         return Foundation.URLSession(configuration: sessionConfig, delegate: self, delegateQueue: OperationQueue.main)
     }()
     
-    lazy var ordinarySession : Foundation.URLSession = {
+    lazy var ordinarySession : URLSession = {
         let sessionConfig = URLSessionConfiguration.default
         sessionConfig.httpShouldUsePipelining = true
         sessionConfig.urlCache = URLCache.shared
@@ -107,7 +107,7 @@ public class SilkManager: NSObject, URLSessionDelegate, URLSessionTaskDelegate, 
     }
     
     // MARK: - Background Sessions
-    public func setBackgroundSessionCompletionHandler(_ completionHandler: () -> Void, sessionIdentifier: String) {
+    public func setBackgroundSessionCompletionHandler(_ completionHandler: (() -> ()), sessionIdentifier: String) {
         if backgroundSession.configuration.identifier == sessionIdentifier {
             backgroundSessionCompletionHandler = completionHandler
         }
@@ -142,7 +142,7 @@ public class SilkManager: NSObject, URLSessionDelegate, URLSessionTaskDelegate, 
         // only connection errors are handled here!
         if let request = requestForTag(task.taskDescription) {
             let response = task.response as? HTTPURLResponse ?? HTTPURLResponse()
-            request.handleResponse(response, error: error, task: task)
+            request.handleResponse(response, error: error as NSError?, task: task)
         }
     }
     
@@ -150,12 +150,12 @@ public class SilkManager: NSObject, URLSessionDelegate, URLSessionTaskDelegate, 
         if let request = requestForTag(task.taskDescription) as? HttpRequest, let uploadProgressClosure = request.uploadProgressClosure {
             let progress = Float(totalBytesSent) / Float(totalBytesExpectedToSend)
             DispatchQueue.main.async {
-                uploadProgressClosure(progress: progress, bytesSent: totalBytesSent, totalBytes: totalBytesExpectedToSend)
+                uploadProgressClosure(progress, totalBytesSent, totalBytesExpectedToSend)
             }
         }
     }
     
-    public func urlSession(_ session: URLSession, task: URLSessionTask, didReceive challenge: URLAuthenticationChallenge, completionHandler: (Foundation.URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
+    public func urlSession(_ session: URLSession, task: URLSessionTask, didReceive challenge: URLAuthenticationChallenge, completionHandler: (URLSession.AuthChallengeDisposition, URLCredential?) -> Void)  {
         if let request = requestForTag(task.taskDescription) as? HttpRequest {
             if let serverTrust = challenge.protectionSpace.serverTrust, challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust {
                 if request.trustsAllCertificates {

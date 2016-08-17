@@ -68,14 +68,10 @@ public class DataRequest: HttpRequest {
             }
         }
         
-        if let data = data as? Dictionary<String, AnyObject> {
-            do {
-                let bodyData = try JSONSerialization.data(withJSONObject: data, options: [])
-                body(bodyData)
-            } catch {
-                print("[Silk] unable to encode body data")
-            }
-        } else {
+        do {
+            let bodyData = try JSONSerialization.data(withJSONObject: data as [String: AnyObject], options: [])
+            body(bodyData)
+        } catch {
             print("[Silk] unable to encode body data")
         }
         

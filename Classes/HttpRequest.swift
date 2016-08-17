@@ -3,7 +3,7 @@ import Foundation
 public class HttpRequest: Request {
     let request = NSMutableURLRequest()
     
-    private(set) var uploadProgressClosure: ((progress: Float, bytesSent: Int64, totalBytes: Int64) -> Void)?
+    private(set) var uploadProgressClosure: ((_ progress: Float, _ bytesSent: Int64, _ totalBytes: Int64) -> Void)?
     private(set) var responseData = Data()
     private(set) var credentials: URLCredential?
     private(set) var trustsAllCertificates = false
@@ -46,7 +46,7 @@ public class HttpRequest: Request {
     }
     
     @discardableResult
-    public func uploadProgress(progressClosure progress: ((progress: Float, bytesSent: Int64, totalBytes: Int64) -> Void)?) -> Self {
+    public func uploadProgress(progressClosure progress: ((_ progress: Float, _ bytesSent: Int64, _ totalBytes: Int64) -> Void)?) -> Self {
         uploadProgressClosure = progress
         return self
     }
@@ -158,7 +158,7 @@ public class HttpRequest: Request {
         var stringEncoding: String.Encoding = String.Encoding.utf8 // default
         if let encodingName = response.textEncodingName {
             if encodingName.characters.count > 0 {
-                let encoding = CFStringConvertIANACharSetNameToEncoding(encodingName)
+                let encoding = CFStringConvertIANACharSetNameToEncoding(encodingName as CFString!)
                 stringEncoding = String.Encoding(rawValue: CFStringConvertEncodingToNSStringEncoding(encoding))
             }
         }
@@ -168,7 +168,7 @@ public class HttpRequest: Request {
         if let error = error {
             if let errorClosure = errorClosure {
                 DispatchQueue.main.async {
-                    errorClosure(error: error, body: (body as? String ?? ""), data: self.responseData, response: response, request: self)
+                    errorClosure(error, (body as? String ?? ""), self.responseData, response, self)
                 }
             }
         } else {
@@ -176,13 +176,13 @@ public class HttpRequest: Request {
                 if let errorClosure = self.errorClosure {
                     let customError = NSError(domain: "Silk", code: response.statusCode, userInfo: [NSLocalizedDescriptionKey: "Status Code \(response.statusCode)"])
                     DispatchQueue.main.async {
-                        errorClosure(error: customError, body: (body as? String ?? ""), data: self.responseData, response: response, request: self)
+                        errorClosure(customError, (body as? String ?? ""), self.responseData, response, self)
                     }
                 }
             } else {
                 if let successClosure = self.successClosure {
                     DispatchQueue.main.async {
-                        successClosure(body: (body as? String ?? ""), data: self.responseData, response: response, request: self)
+                        successClosure((body as? String ?? ""), self.responseData, response, self)
                     }
                 }
             }

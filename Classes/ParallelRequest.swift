@@ -19,12 +19,12 @@ public class ParallelRequest: CompoundRequest {
             for request in requests {
                 request.cancel()
             }
-            errorClosure?(error: error, body: body ?? "", data: data ?? Data(), response: response, request: self)
+            errorClosure?(error, body ?? "", data ?? Data(), response, self)
             manager.unregisterRequest(self)
             requests.removeAll(keepingCapacity: false)
         } else {
             if requests.isEmpty {
-                successClosure?(body: "", data: Data(), response: URLResponse(), request: self)
+                successClosure?("", Data(), URLResponse(), self)
                 manager.unregisterRequest(self)
             }
         }
@@ -43,12 +43,12 @@ public class ParallelRequest: CompoundRequest {
             
             request.completion({ [weak self] body, data, response, context in
                 if let weakSelf = self {
-                    originalSuccessClosure?(body: body, data: data, response: response, request: weakSelf)
+                    originalSuccessClosure?(body, data, response, weakSelf)
                     weakSelf.remove(request)
                 }
             }, error: { [weak self] error, body, data, response, context in
                 if let weakSelf = self {
-                    originalErrorClosure?(error: error, body: body, data: data, response: response, request: weakSelf)
+                    originalErrorClosure?(error, body, data, response, weakSelf)
                     weakSelf.remove(request, error: error, body: body, data:data, response: response as? HTTPURLResponse)
                 }
             })
