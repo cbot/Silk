@@ -107,7 +107,7 @@ public class SilkManager: NSObject, URLSessionDelegate, URLSessionTaskDelegate, 
     }
     
     // MARK: - Background Sessions
-    public func setBackgroundSessionCompletionHandler(_ completionHandler: (() -> ()), sessionIdentifier: String) {
+    public func setBackgroundSessionCompletionHandler(_ completionHandler: @escaping (() -> ()), sessionIdentifier: String) {
         if backgroundSession.configuration.identifier == sessionIdentifier {
             backgroundSessionCompletionHandler = completionHandler
         }
@@ -155,7 +155,7 @@ public class SilkManager: NSObject, URLSessionDelegate, URLSessionTaskDelegate, 
         }
     }
     
-    public func urlSession(_ session: URLSession, task: URLSessionTask, didReceive challenge: URLAuthenticationChallenge, completionHandler: (URLSession.AuthChallengeDisposition, URLCredential?) -> Void)  {
+    public func urlSession(_ session: URLSession, task: URLSessionTask, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void)  {
         if let request = requestForTag(task.taskDescription) as? HttpRequest {
             if let serverTrust = challenge.protectionSpace.serverTrust, challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust {
                 if request.trustsAllCertificates {
