@@ -5,7 +5,7 @@ public class DataRequest: HttpRequest {
     
     // MARK: - Public Methods
     @discardableResult
-    public func formUrlEncoded(_ data: Dictionary<String, AnyObject>) -> Self {
+    public func formUrlEncoded(_ data: Dictionary<String, Any?>) -> Self {
         let requiresMultipart = data.values.contains { $0 is SilkMultipartObject }
         if requiresMultipart {
             var bodyData = Data()
@@ -54,7 +54,7 @@ public class DataRequest: HttpRequest {
     }
     
     @discardableResult
-    public func formJson(_ input: Dictionary<String, AnyObject?>) -> Self {
+    public func formJson(_ input: Dictionary<String, Any?>) -> Self {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
         var data = input
@@ -69,7 +69,7 @@ public class DataRequest: HttpRequest {
         }
         
         do {
-            let bodyData = try JSONSerialization.data(withJSONObject: data as [String: AnyObject], options: [])
+            let bodyData = try JSONSerialization.data(withJSONObject: data, options: [])
             body(bodyData)
         } catch {
             print("[Silk] unable to encode body data")
@@ -79,7 +79,7 @@ public class DataRequest: HttpRequest {
     }
     
     @discardableResult
-    public func formJson(_ data: Array<AnyObject>) -> Self {
+    public func formJson(_ data: Array<Any?>) -> Self {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
         do {
