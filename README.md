@@ -7,5 +7,5 @@ Silk is a thin layer on top of NSURLSession. While it may not be as sophisticate
 ## Installation
 Use CocoaPods to add Silk to your project. Just add the following line to your Podfile.
 ```
-pod 'Silk', '~> 3.0.1'
+pod 'Silk', '~> 3.1.0'
 ```
