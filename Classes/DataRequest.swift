@@ -7,12 +7,24 @@ public class DataRequest: HttpRequest {
     @discardableResult
     public func formUrlEncoded(_ data: Dictionary<String, Any?>) -> Self {
         let requiresMultipart = data.values.contains { $0 is SilkMultipartObject }
+        
         if requiresMultipart {
             var bodyData = Data()
             let boundary = "----SilkFormBoundary\(UUID().uuidString)"
             request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
             
-            for (key, value) in data {
+            // support ordered parts
+            let sortedData = data.sorted(by: { lhs, rhs in
+                if let lhs = lhs.value as? SilkMultipartObject, let rhs = rhs.value as? SilkMultipartObject {
+                    return lhs.index < rhs.index
+                } else if let lhs = lhs.value as? SilkMultipartObject {
+                    return true
+                } else {
+                    return false
+                }
+            })
+            
+            for (key, value) in sortedData {
                 if let valueNumber = value as? NSNumber {
                     bodyData.append("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(key)\"\r\n".data(using: String.Encoding.ascii) ?? Data())
                     bodyData.append("\r\n\(valueNumber.stringValue)\r\n".data(using: String.Encoding.ascii) ?? Data())
@@ -20,7 +32,17 @@ public class DataRequest: HttpRequest {
                     bodyData.append("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(key)\"\r\n".data(using: String.Encoding.ascii) ?? Data())
                     bodyData.append("\r\n\(valueString)\r\n".data(using: String.Encoding.ascii) ?? Data())
                 } else if let valueObject = value as? SilkMultipartObject {
-                    bodyData.append("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(key)\"; filename=\"\(valueObject.fileName ?? "file")\"\r\nContent-Type: \(valueObject.contentType)\r\n\r\n".data(using: String.Encoding.ascii) ?? Data())
+                    var bodyString = "--\(boundary)\r\n"
+                    bodyString.append("Content-Disposition: form-data; name=\"\(key)\"")
+            
+                    if let fileName = valueObject.fileName {
+                        bodyString.append("; filename=\"\(fileName)\"")
+                    }
+                    
+                    bodyString.append("\r\n")
+                    bodyString.append("Content-Type: \(valueObject.contentType)\r\n\r\n")
+                    
+                    bodyData.append(bodyString.data(using: String.Encoding.ascii) ?? Data())
                     bodyData.append(valueObject.data as Data)
                     bodyData.append("\r\n".data(using: String.Encoding.ascii) ?? Data())
                 }

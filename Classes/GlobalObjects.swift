@@ -80,11 +80,13 @@ public class SilkMultipartObject {
     private(set) var contentType: String
     private(set) var name: String
     private(set) var fileName: String?
+    private(set) var index: Int
     
-    public init(data: Data, contentType: String, name: String, fileName: String? = nil) {
+    public init(data: Data, contentType: String, name: String, index: Int = 0, fileName: String? = nil) {
         self.data = data
         self.contentType = contentType
         self.name = name
+        self.index = index
         self.fileName = fileName
     }
 }
