@@ -30,6 +30,10 @@ public class SilkManager: NSObject, URLSessionDelegate, URLSessionTaskDelegate, 
         return Foundation.URLSession(configuration: sessionConfig, delegate: self, delegateQueue: OperationQueue.main)
     }()
     
+    public let activityManager = SilkActivityManager()
+    public var useActivityManager = false
+    public var reportCancelledRequestsAsErrors = false
+    
     // MARK: - Public Methods
     public func request() -> DataRequest {
         return DataRequest(manager: self)
@@ -138,6 +142,10 @@ public class SilkManager: NSObject, URLSessionDelegate, URLSessionTaskDelegate, 
     // MARK: - NSURLSessionTaskDelegate    
     public func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         NotificationCenter.default.post(name: Notification.Name(rawValue: "SilkRequestEnded"), object: nil)
+        
+        if let task = task as? URLSessionDataTask, useActivityManager {
+            activityManager.decrease()
+        }
         
         // only connection errors are handled here!
         if let request = requestForTag(task.taskDescription) {

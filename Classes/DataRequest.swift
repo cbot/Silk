@@ -133,6 +133,11 @@ public class DataRequest: HttpRequest {
         if let task = task {
             task.taskDescription = tag
             manager.registerRequest(self)
+            
+            if manager.useActivityManager {
+                manager.activityManager.increase()
+            }
+            
             task.resume()
             NotificationCenter.default.post(name: Notification.Name(rawValue: "SilkRequestStarted"), object: nil)
             return true

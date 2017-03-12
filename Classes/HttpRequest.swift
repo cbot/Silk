@@ -151,7 +151,7 @@ public class HttpRequest: Request {
     override func handleResponse(_ response: HTTPURLResponse, error: NSError?, task: URLSessionTask) {
         manager.unregisterRequest(self)
         
-        if let error = error, error.code == -999 { // cancelled request
+        if let error = error, error.code == NSURLErrorCancelled, !manager.reportCancelledRequestsAsErrors { // cancelled request
             return
         }
         

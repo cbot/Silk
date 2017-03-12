@@ -43,7 +43,7 @@ public class ChainedRequest: CompoundRequest {
                 }
             }).execute()
         } else {
-            successClosure?("", Data(), URLResponse(), self)
+            successClosure?("", Data(), HTTPURLResponse(), self)
             manager.unregisterRequest(self)
         }
     }

@@ -1,8 +1,8 @@
 import Foundation
 
 public class Request: Equatable {
-    public typealias SuccessClosure = ((_ body: String, _ data: Data, _ response: URLResponse, _ request: Request)->())?
-    public typealias ErrorClosure = ((_ error: NSError, _ body: String, _ data: Data, _ response: URLResponse?, _ request: Request)->())?
+    public typealias SuccessClosure = ((_ body: String, _ data: Data, _ response: HTTPURLResponse, _ request: Request)->())?
+    public typealias ErrorClosure = ((_ error: NSError, _ body: String, _ data: Data, _ response: HTTPURLResponse?, _ request: Request)->())?
     
     var manager: SilkManager
     internal(set) var successClosure: SuccessClosure

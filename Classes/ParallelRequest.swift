@@ -24,7 +24,7 @@ public class ParallelRequest: CompoundRequest {
             requests.removeAll(keepingCapacity: false)
         } else {
             if requests.isEmpty {
-                successClosure?("", Data(), URLResponse(), self)
+                successClosure?("", Data(), HTTPURLResponse(), self)
                 manager.unregisterRequest(self)
             }
         }
@@ -49,7 +49,7 @@ public class ParallelRequest: CompoundRequest {
             }, error: { [weak self] error, body, data, response, context in
                 if let weakSelf = self {
                     originalErrorClosure?(error, body, data, response, weakSelf)
-                    weakSelf.remove(request, error: error, body: body, data:data, response: response as? HTTPURLResponse)
+                    weakSelf.remove(request, error: error, body: body, data:data, response: response)
                 }
             })
             
