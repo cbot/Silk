@@ -143,7 +143,7 @@ public class SilkManager: NSObject, URLSessionDelegate, URLSessionTaskDelegate, 
     public func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         NotificationCenter.default.post(name: Notification.Name(rawValue: "SilkRequestEnded"), object: nil)
         
-        if let task = task as? URLSessionDataTask, useActivityManager {
+        if let _ = task as? URLSessionDataTask, useActivityManager {
             activityManager.decrease()
         }
         

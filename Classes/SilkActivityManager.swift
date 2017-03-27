@@ -9,7 +9,7 @@ public class SilkActivityManager {
     
     private var counter = 0 {
         didSet {
-            if counter < 0 { counter == 0 }
+            if counter < 0 { counter = 0 }
             DispatchQueue.main.sync {
                 activityClosure(counter > 0)
             }
