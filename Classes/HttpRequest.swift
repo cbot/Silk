@@ -168,7 +168,7 @@ public class HttpRequest: Request {
         if let error = error {
             if let errorClosure = errorClosure {
                 DispatchQueue.main.async {
-                    errorClosure(error, (body as? String ?? ""), self.responseData, response, self)
+                    errorClosure(error, body as String? ?? "", self.responseData, response, self)
                 }
             }
         } else {
@@ -176,13 +176,13 @@ public class HttpRequest: Request {
                 if let errorClosure = self.errorClosure {
                     let customError = NSError(domain: "Silk", code: response.statusCode, userInfo: [NSLocalizedDescriptionKey: "Status Code \(response.statusCode)"])
                     DispatchQueue.main.async {
-                        errorClosure(customError, (body as? String ?? ""), self.responseData, response, self)
+                        errorClosure(customError, body as String? ?? "", self.responseData, response, self)
                     }
                 }
             } else {
                 if let successClosure = self.successClosure {
                     DispatchQueue.main.async {
-                        successClosure((body as? String ?? ""), self.responseData, response, self)
+                        successClosure(body as String? ?? "", self.responseData, response, self)
                     }
                 }
             }

@@ -17,7 +17,7 @@ public class DataRequest: HttpRequest {
             let sortedData = data.sorted(by: { lhs, rhs in
                 if let lhs = lhs.value as? SilkMultipartObject, let rhs = rhs.value as? SilkMultipartObject {
                     return lhs.index < rhs.index
-                } else if lhs is SilkMultipartObject {
+                } else if lhs.value is SilkMultipartObject {
                     return true
                 } else {
                     return false
