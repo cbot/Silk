@@ -1,7 +1,7 @@
 import Foundation
 
 public class HttpRequest: Request {
-    let request = NSMutableURLRequest()
+    public let request = NSMutableURLRequest()
     
     private(set) var uploadProgressClosure: ((_ progress: Float, _ bytesSent: Int64, _ totalBytes: Int64) -> Void)?
     private(set) var responseData = Data()
